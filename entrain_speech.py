@@ -46,7 +46,7 @@ class EntrainAudio():
         # Where is Praat?
         self.praat = "/Applications/Praat.app/Contents/MacOS/Praat"
         # Where is the Praat script we will use for processing?
-        self.script = "detect_speech_rate.praat"
+        self.script = "rr_entrain_speech.praat"
 
         # Define pitch ranges that will be considered speech.
         # - Human child speech: generally 250-400Hz.
