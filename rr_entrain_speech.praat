@@ -62,6 +62,7 @@ form Counting Syllables in Sound Utterances
     sentence target_file sample2.wav
     sentence output_file sample-morphed.wav
     sentence output_dir /directory
+    real age_mean_pitch 290
 endform
 
 # Got files:
@@ -70,26 +71,46 @@ printline Source file: 'source_file$'
 printline Output file: 'output_file$'
 printline Output dir: 'output_file$'
 
-# Read target file and detect speech rate.
+# Pitch range to consider (children generally 200-400 Hz).
+floor = 100
+ceiling = 500
+
+
+# Read target file and detect features.
 if fileReadable(target_file$)
+    # Detect speech rate.
     printline Detecting target speech rate...
     @detectSpeechRate: target_file$
     target_speech_rate = speakingrate
     target_sound_id = soundid
     target_textgrid_id = textgridid
+
+    # Get mean pitch of target.
+    select 'target_sound_id'
+    To Pitch... 0 floor ceiling
+    target_mean_pitch = Get mean... 0 0 Hertz
+    printline Target mean pitch: 'target_mean_pitch'
+
 else
     printline Cannot read target file
     exit
 endif
 
-# Read source file and detect speech rate.
+# Read source file and detect features.
 if fileReadable(source_file$)
+    # Detect speech rate.
     printline Detecting source speech rate...
     @detectSpeechRate: source_file$
     source_speech_rate = speakingrate
     source_dur = originaldur
     source_sound_id = soundid
     source_textgrid_id = textgridid
+
+    # Get mean pitch of source.
+    select 'source_sound_id'
+    To Pitch... 0 floor ceiling
+    source_mean_pitch = Get mean... 0 0 Hertz
+    printline Source mean pitch: 'source_mean_pitch'
 else
     printline Cannot read source file
     exit
@@ -129,6 +150,46 @@ result = Lengthen (overlap-add)... 100 500 'dur_factor'
 # Check the new duration to see that it's changed appropriately.
 result_duration = Get total duration
 printline Morphed duration: 'result_duration:2'
+select result
+
+# Adjust the pitch of the source to match the mean fundamental frequency of
+# speakers of the target's age.
+#
+# Adjust the pitch of the source file a little up or down to be closer to the
+# pitch of the target. Won't shift the pitch entirely or replace the pitch
+# contour because the source has a lot of pitch variation and is in a particular
+# range, so changing these would change the source too much and may make it
+# sound pretty weird (e.g. emphasis on wrong syllables).
+#
+# If the mean pitch of the target is higher than the source's mean pitch by some
+# threshold amount, shift the source up a little. Otherwise, if the the target's
+# mean pitch is lower than the source's mean pitch by some threshold amount,
+# shift the source down a little.
+#TODO range?
+if target_mean_pitch > (age_mean_pitch + 20)
+    adjust_pitch_by = (source_mean_pitch - age_mean_pitch) + 20
+else if target_mean_pitch < (age_mean_pitch - 20)
+    adjust_pitch_by = (source_mean_pitch - age_mean_pitch) - 20
+else
+    adjust_pitch_by = source_mean_pitch - age_mean_pitch
+endif
+
+# Now adjust the pitch.
+# TODO
+
+# Get source start and end times.
+start_time = Get start time
+end_time = Get end time
+# Extract pitch tier and shift freqency.
+manipulation = To Manipulation... 0.01 floor ceiling
+pitch_tier = Extract pitch tier
+select pitch_tier
+Shift frequencies... start_time end_time adjust_pitch_by Hertz
+# Replace original pitch tier with shifted one.
+plus manipulation
+Replace pitch tier
+select manipulation
+result = Get resynthesis (overlap-add)
 select result
 
 # Save the adjusted sound to a new file.
@@ -171,7 +232,7 @@ procedure detectSpeechRate: .wav_file$
     mindip = 2
     # Minimum pause duration in s, default 0.3.
     minpause = 0.3
-    # Keep soundfiles and textgrids, default true.
+    # Keep soundfiles and textgrids, default false.
     showtext = 0
 
     # Read in wav file.
@@ -208,6 +269,7 @@ procedure detectSpeechRate: .wav_file$
     endif
 
     # get pauses (silences) and speakingtime
+    # This also trims extra silence from the start and end of the file.
     To TextGrid (silences)... threshold3 minpause 0.1 silent sounding
     textgridid = selected("TextGrid")
     silencetierid = Extract tier... 1

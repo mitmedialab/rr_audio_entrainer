@@ -30,10 +30,11 @@ List the location of the Praat executable in `entrain_speech.py`.
 ## Usage
 
 `python entrain_speech.py [-h] [-p] [-i [INCOMING_AUDIO]] [-o [OUT_FILE]] [-d
-[OUT_DIR]] [audio_to_morph]`
+[OUT_DIR]] [audio_to_morph] [target_age]`
 
 positional arguments:
 - `audio_to_morph`: Audio file to morph (.wav).
+- `target_age`: Age of the speaker providing audio to match.
 
 optional arguments:
 - `-h`, `--help`: show this help message and exit

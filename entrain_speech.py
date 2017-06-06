@@ -69,7 +69,63 @@ class EntrainAudio():
         self.pitch_detector.set_tolerance(_tolerance)
 
 
-    def entrain_from_mic(self, source_file, out_file, out_dir, use_praat):
+    def _get_mean_ff(self, age):
+        """ Return the mean fundamental frequency for a given age group.
+        """
+        if age < 4:
+            # No data. Some research suggests their pitch may be higher.
+            return 260
+
+        # Based on data from Geifer and Denor 2014, Hacki and Heitmuller 1999,
+        # Sorenson 1989, Bennett 1983, Weinberg and Zlatin 1970, Baker et al.
+        # 2008. None of these papers found significant gender differences at
+        # these ages.
+        if age == 5:
+            # girls: 247, 294
+            # boys: 252, 262
+            # both: 232
+            # mean of all these: 257
+            return 257
+        if age == 6:
+            # girls: 247, 296, 262
+            # boys: 247, 250, 277
+            # both: 245, 241
+            # mean of all these: 258
+            return 258
+        if age == 7:
+            # girls: 257, 277
+            # boys: 288, 277
+            # both: 230, 253
+            # mean of all these: 263
+            return 263
+        if age == 8:
+            # girls: 235, 251, 247
+            # boys: 234, 229, 262
+            # both: 236, 240
+            # mean of all these: 241
+            return 241
+        if age == 9:
+            # girls: 222, 266, 262
+            # boys: 226, 221, 233
+            # mean of all these: 238
+            return 238
+        if age == 10:
+            # girls: 228, 229
+            # boys: 224, 230
+            # mean of all these: 227
+            return 227
+
+        if age > 10:
+            # No specific data. Adults tend to have lower ranges.
+            # - Human adult male speech: generally 85-180Hz.
+            # - Human adult female speech: generally 165-255Hz.
+            # So as not to gender the robot too much, leave its voice in the
+            # higher child-like range, as this fits its persona.
+            return 220
+
+
+    def entrain_from_mic(self, source_file, out_file, out_dir, use_praat,
+            target_age):
         """ Open the microphone to get an incoming audio stream. If the
         use_praat flag is set, save the first section of audio that is probably
         speech to a wav file and use that as the target when processing with
@@ -179,7 +235,7 @@ class EntrainAudio():
                         # to match what's coming over the mic.
                         # TODO
                         self._entrain_from_file_praat(target_file, source_file,
-                                out_file, out_dir)
+                                out_file, out_dir, target_age)
 
                     # Or don't use Praat. Does not do as much, but is all
                     # in python.
@@ -201,7 +257,7 @@ class EntrainAudio():
 
 
     def entrain_from_file(self, target_file, source_file, out_file, out_dir,
-            use_praat):
+            use_praat, target_age):
         """ Morph the given audio file to match the target file provided. Save
         with the given output file name in the given output directory. Use
         Praat for processing if specified. Currently, only Praat does all the
@@ -209,7 +265,7 @@ class EntrainAudio():
         """
         if use_praat:
             self._entrain_from_file_praat(target_file, source_file, out_file,
-                    out_dir)
+                    out_dir, target_age)
         else:
             print("TODO: Process the target file and morph the source in python.")
             # TODO: Morph source audio file and write to new file.
@@ -219,7 +275,7 @@ class EntrainAudio():
 
 
     def _entrain_from_file_praat(self, target_file, source_file, out_file,
-            out_dir):
+            out_dir, target_age):
         """ Use a Praat script to morph the given source audio file to match the
         specified target audio file, and save with the provided output file name
         to the specified output directory.
@@ -232,11 +288,19 @@ class EntrainAudio():
         if out_file is None:
             out_file = source_file + "-morphed.wav"
 
-        # The praat script determines the speaking rate of the source file, the
-        # speaking rate of the target file, adjusts the tempo of the source file
-        # to match the target, and saves the adjusted source as a new wav.
+        # Get mean fundamental frequency for the target age.
+        ff_age = self._get_mean_ff(target_age)
+
+        # The Praat script determines several features:
+        #  - the speaking rate of the source and target files
+        #  - the mean pitch of the source and target files
+        # Then, we adjust several features of the source to match the target:
+        #  - tempo / speaking rate
+        #  - mean pitch (first to match the target's age, and then additionally
+        #    within a specified range so it doesn't change too much)
+        # and finally, save the adjusted source as a new wav.
         subprocess.call([self.praat, "--run", self.script, source_file,
-            target_file, out_file, out_dir])
+            target_file, out_file, out_dir, str(ff_age)])
 
         # TODO error handling? what if praat fails to execute?
 
@@ -405,6 +469,8 @@ if __name__ == '__main__':
             help="Use the built-in Praat script for audio processing")
     parser.add_argument("audio_to_morph", type=str, nargs='?', action='store',
             default="sample.wav", help="Audio file to morph.")
+    parser.add_argument("target_age", type=int, nargs='?', action='store',
+            default=5, help="Age of speaker providing audio to match.")
     parser.add_argument("-i", "--incoming_audio", type=str, action='store',
             nargs='?', dest="incoming_audio",
             help="Optional audio file to match.")
@@ -431,12 +497,12 @@ if __name__ == '__main__':
     if args.incoming_audio:
             entrainer.entrain_from_file(args.incoming_audio,
                     args.audio_to_morph, args.out_file, args.out_dir,
-                    args.use_praat)
+                    args.use_praat, args.target_age)
 
     # Otherwise, open the microphone stream for processing. Only stop processing
     # from the mic when we get a keyboard interrupt and exit.
     else:
         entrainer.entrain_from_mic(args.audio_to_morph, args.out_file,
-                args.out_dir, args.use_praat)
+                args.out_dir, args.use_praat, args.target_age)
 
 
