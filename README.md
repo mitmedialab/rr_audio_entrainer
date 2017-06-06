@@ -4,6 +4,29 @@ Entrain an audio file (the source) to match an audio stream from the microphone
 or another wav file (the target). Detect various features in the target, such
 as speaking rate and pitch, and morph the source to match these features.
 
+## Setup and Dependencies
+
+`pip install` the following libraries...
+
+- aubio
+    - for pitch detection on the incoming audio
+    - GNU/GPL3 license
+- librosa
+    - to morph audio in python, no Praat
+    - ISC license
+- PyAudio
+    - to open and read from the microphone
+    - MIT license
+- numpy
+    - because PyAudio uses numpy arrays for holding data
+    - BSD-new license
+- scipy
+    - used in morphing audio in python, no Praat
+    - BSD license
+
+To morph audio using Praat, you must have [Praat](www.praat.org) installed.
+List the location of the Praat executable in `entrain_speech.py`.
+
 ## Usage
 
 `python entrain_speech.py [-h] [-p] [-i [INCOMING_AUDIO]] [-o [OUT_FILE]] [-d
