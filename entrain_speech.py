@@ -464,17 +464,20 @@ if __name__ == '__main__':
             specified audio file to match.
             ''')
     parser.add_argument("-p", "--use_praat", action='store_true', default=True,
-            help="Use the built-in Praat script for audio processing")
+            help="Use the built-in Praat script for audio processing. Default" +
+            " true.")
     parser.add_argument("audio_to_morph", type=str, nargs='?', action='store',
-            default="sample.wav", help="Audio file to morph.")
+            default="sample.wav", help="Audio file to morph. Default sample " +
+            "file.")
     parser.add_argument("target_age", type=int, nargs='?', action='store',
-            default=5, help="Age of speaker providing audio to match.")
+            default=5, help="Age of speaker providing audio to match. Default"
+            + " 5.")
     parser.add_argument("-i", "--incoming_audio", type=str, action='store',
             nargs='?', dest="incoming_audio",
             help="Optional audio file to match.")
     parser.add_argument("-o", "--outfile", type=str, nargs='?', action='store',
             default="sample-out.wav", dest="out_file",
-            help="Optional filename for morphed audio.")
+            help="Optional filename for morphed audio. Default sample-out.wav")
     parser.add_argument("-d", "--outdir", type=str, nargs='?', action='store',
             dest="out_dir", default="", help="Optional directory for saving "
             "audio. Default is the current working directory.")
