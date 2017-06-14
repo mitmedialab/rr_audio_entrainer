@@ -154,9 +154,6 @@ class EntrainAudio():
         # to speak (and process only the audio collected during their speech
         # turn). For now, assume that it's the child's turn when the program
         # starts, and that the robot's turn starts on a key press.
-        #
-        # NOTE: temporary. Listen to the keyboard for key presses to determine
-        # when to start and end listening to the microphone.
 
         # Running total of potential speech frames.
         running_total_speech = 0
@@ -180,6 +177,8 @@ class EntrainAudio():
                 # a row to act as a target. This will probably have to change to
                 # something more intelligent later. For example, we could check
                 # if the values are over some threshold for volume or energy.
+                # Or, use the ROS speaking binary, and stop processing when
+                # speech stops.
                 if pitch > self._floor_pitch and pitch < self._ceiling_pitch:
                     running_total_speech += 1
                     if running_total_speech > 4:
@@ -190,11 +189,12 @@ class EntrainAudio():
                         # Save running stream of pitches.
                         incoming_pitches.append(pitch)
                 # If the pitch is zero, there's probably no speech.
-                elif pitch < 1:
+                elif pitch < 1 or pitch > self._ceiling_pitch:
                     running_total_silence +=1
-                    # If we've had a lot of silence in a row, there's probably
-                    # a pause.
-                    if running_total_silence > 8: # TODO Pick a good value.
+                    # If we've had a lot of silence in a row, or non-speech
+                    # sound, there's probably a pause or no speech.
+                     # TODO Pick good values for these:
+                    if running_total_silence > 6 and running_total_speech < 30:
                         print("\tsilence")
                         running_total_speech = 0
                     else:
@@ -208,11 +208,9 @@ class EntrainAudio():
                     f.append(audiobuffer)
 
                 # Check to see if we need to process the incoming audio yet.
-                # If we have sufficient incoming audio, stop listening on the
-                # mic and process.
-                # TODO: Stop listening when there's silence instead of when we
-                # get some number of seconds of audio.
-                if len(incoming_pitches) > 40:
+                # If we have sufficient incoming audio and there's been a long
+                # silence, stop listening on the mic and process.
+                if len(incoming_pitches) >= 30 and running_total_silence > 5:
                     if use_praat:
                         # TODO file name for target? append date/time
                         # so we know later what was processed to get the
