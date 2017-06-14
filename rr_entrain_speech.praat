@@ -132,13 +132,14 @@ printline Duration morph factor: 'dur_factor:2'
 
 # Cap the amount the source file can be sped up or slowed down to reasonable
 # values, since if it's too fast or slow it'll sound weird.
-# TODO test that these values make sense
-if dur_factor > 1.7
-    dur_factor = 1.7
+# Slows it down...
+if dur_factor > 1.4
+    dur_factor = 1.4
     printline Adjusted duration morph factor: 'dur_factor:2'
 endif
-if dur_factor < 0.5
-    dur_factor = 0.5
+# Speeds it up...
+if dur_factor < 0.7
+    dur_factor = 0.7
     printline Adjusted duration morph factor: 'dur_factor:2'
 endif
 
@@ -146,7 +147,7 @@ endif
 select 'source_sound_id'
 # Adjust length of sound by the factor computed earlier.
 #TODO default frequencies for this command?
-result = Lengthen (overlap-add)... 100 500 'dur_factor'
+result = Lengthen (overlap-add)... 100 600 'dur_factor'
 # Check the new duration to see that it's changed appropriately.
 result_duration = Get total duration
 printline Morphed duration: 'result_duration:2'
@@ -166,17 +167,15 @@ select result
 # mean pitch is lower than the source's mean pitch by some threshold amount,
 # shift the source down a little.
 #TODO range?
-if target_mean_pitch > (age_mean_pitch + 20)
-    adjust_pitch_by = (source_mean_pitch - age_mean_pitch) + 20
-else if target_mean_pitch < (age_mean_pitch - 20)
-    adjust_pitch_by = (source_mean_pitch - age_mean_pitch) - 20
+if target_mean_pitch > (age_mean_pitch + 30)
+    adjust_pitch_by = (source_mean_pitch - age_mean_pitch) + 30
+else if target_mean_pitch < (age_mean_pitch - 30)
+    adjust_pitch_by = (source_mean_pitch - age_mean_pitch) - 30
 else
     adjust_pitch_by = source_mean_pitch - age_mean_pitch
 endif
 
 # Now adjust the pitch.
-# TODO
-
 # Get source start and end times.
 start_time = Get start time
 end_time = Get end time
