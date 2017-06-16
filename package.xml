@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package>
+  <name>rr_audio_entrainer</name>
+  <version>1.0.0</version>
+  <description>Entrain audio files to match target audio</description>
+
+  <maintainer email="jakory@media.mit.edu">jakory</maintainer>
+  <license>GPL3</license>
+  <url type="website">https://github.com/mitmedialab/rr_audio_entrainer</url>
+  <author email="jakory@media.mit.edu">jakory</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+
+</package>
