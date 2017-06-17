@@ -6,28 +6,58 @@ as speaking rate and pitch, and morph the source to match these features.
 
 ## Setup and Dependencies
 
-`pip install` the following libraries...
+### Python
+`pip install` the following libraries (ideally in your virtualenv)...
 
 - aubio
-    - for pitch detection on the incoming audio
+    - For pitch detection on the incoming audio
     - GNU/GPL3 license
 - librosa
-    - to morph audio in python, no Praat
+    - Needed for some parts of the demo only
+    - To morph audio in python, no Praat
     - ISC license
+- portaudio
+    - Needed for PyAudio
+    - Sometimes pip has issues finding the portaudio.h file if you don't
+      install this manually.
+    - On Ubuntu 14.04, you may need to install portaudio19-dev instead of
+      libportaudio for it to compile successfully. You may need to sudo apt-get
+      this instead of pip installing it.
 - PyAudio
-    - to open and read from the microphone
+    - To open and read from the microphone
     - MIT license
 - numpy
-    - because PyAudio uses numpy arrays for holding data
+    - Because PyAudio uses numpy arrays for holding data
     - BSD-new license
 - scipy
-    - used in morphing audio in python, no Praat
+    - Needed for some parts of the demo only
+    - Used in morphing audio in python, no Praat
     - BSD license
 
+### Praat
 To morph audio using Praat, you must have [Praat](www.praat.org) installed.
-List the location of the Praat executable in `entrain_speech.py`.
+List the location of the Praat executable in `entrain_speech_demo.py` and
+`entrain_speech_node.py`.
 
-## Usage
+On Ubuntu, Praat requires libstdc++ with symbol versioning for GLIBCXX\_3.4.21
+which isn't in Ubuntu releases prior to 16.04. As a workaround, you can embed a
+newer version of libstdc++ from Ubuntu 16.04 for Praat to use. Run:
+
+`source libpath_for_praat.sh`
+
+This will add the newer version of libstdc++, which is in the `lib/` directory,
+to the `LD_LIBRARY_PATH`, which means it'll be loaded in preference to the one
+in `/usr/lib/` that's included in the OS. Note that this is a hack, and if
+weird stuff happens or some Praat things don't work as expected, this could be
+the cause.
+
+To check what symbol versioning your libstdc++ has, you can run:
+
+`strings /usr/lib/i386-linux-gnu/libstdc++.so.6 | grep GLIBC`
+
+## Demo
+
+### Usage
 
 `python entrain_speech.py [-h] [-p] [-i [INCOMING_AUDIO]] [-o [OUT_FILE]] [-d
 [OUT_DIR]] [audio_to_morph] [target_age]`
@@ -51,7 +81,9 @@ This program was developed and tested with:
 
 - Python 2.7.6
 - Praat 6.0.29
-- Mac OS X 10.10.5
+- Mac OS X 10.10.5 (demo only)
+- Ubuntu 14.04 LTS 32-bit (demo and ROS node)
+- ROS Indigo
 
 ## Bugs and issues
 
