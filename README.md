@@ -35,9 +35,13 @@ as speaking rate and pitch, and morph the source to match these features.
     - BSD license
 
 ### Praat
+
 To morph audio using Praat, you must have [Praat](www.praat.org) installed.
-List the location of the Praat executable in `entrain_speech_demo.py` and
-`entrain_speech_node.py`.
+Then, add the path to the Praat executable to your `PATH`. For example, if you've put Praat in the directory `/home/myusername/bin`, you would run:
+
+`export PATH=/home/myusername/bin:$PATH`
+
+If you don't want to remember to run this, add it to your shell config file (e.g., .bashrc or config.fish).
 
 On Ubuntu, Praat requires libstdc++ with symbol versioning for GLIBCXX\_3.4.21
 which isn't in Ubuntu releases prior to 16.04. As a workaround, you can embed a

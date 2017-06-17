@@ -43,8 +43,8 @@ class EntrainAudio():
 
     def __init__(self):
         """ Initialize entrainer for detecting pitch and tempo. """
-        # Where is Praat?
-        self.praat = "/Applications/Praat.app/Contents/MacOS/Praat"
+        # Where is Praat? Assumes it has been added to your PATH.
+        self.praat = "praat"
         # Where is the Praat script we will use for processing?
         self.script = "rr_entrain_speech.praat"
 
@@ -278,11 +278,6 @@ class EntrainAudio():
         specified target audio file, and save with the provided output file name
         to the specified output directory.
         """
-        if not os.path.exists(self.praat):
-            raise FileNotFound(self.praat)
-        if not os.path.exists(self.script):
-            raise FileNotFound(self.script)
-
         if out_file is None:
             out_file = source_file + "-morphed.wav"
 
