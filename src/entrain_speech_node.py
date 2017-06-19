@@ -203,7 +203,7 @@ class AudioEntrainer():
                         # Save running stream of pitches.
                         incoming_pitches.append(pitch)
                 # If the pitch is zero, there's probably no speech.
-                elif pitch < 1 or pitch > self._ceiling_pitch:
+                elif pitch < self._floor_pitch or pitch > self._ceiling_pitch:
                     running_total_silence +=1
                     # If we've had a lot of silence in a row, or non-speech
                     # sound, there's probably a pause or no speech.
