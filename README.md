@@ -93,10 +93,25 @@ script.
 ### ROS messages
 
 #### R1D1 messages
-The program subscribes to "/[r1d1\_msgs](https://github.com/mitmedialab/r1d1_msgs "/r1d1_msgs")/AndroidAudio" on the ROS topic "/???".
 
-#### other messages...
-TODO
+The node subscribes to "/[r1d1\_msgs](https://github.com/mitmedialab/r1d1_msgs
+"/r1d1_msgs")/AndroidAudio" on the ROS topic "/???".
+
+#### Speaking binary
+
+The node subscribes to Int32 messages from the [speaking binary
+classifier](https://github.com/mitmedialab/Moody_BackChanneling) on the ROS
+topic "/msg_sb/raw".
+
+#### Relational robot messages
+
+The node subscribes to
+"/[rr_msgs](https://github.com/mitmedialab/rr_msgs)/EntrainAudio" on the ROS
+topic "/rr/entrain_audio".
+
+The node also subscribes to
+"/[rr_msgs](https://github.com/mitmedialab/rr_msgs)/interaction_state" on the
+ROS topic "/rr/state".
 
 
 ## Version notes

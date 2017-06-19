@@ -35,6 +35,7 @@ import struct
 import rospy
 from r1d1_msgs.msg import AndroidAudio
 from rr_msgs.msg import EntrainAudio
+from rr_msgs.msg import InteractionState
 from std_msgs.msg import String
 from std_msgs.msg import Int32
 
@@ -43,7 +44,7 @@ class AudioEntrainer():
     the stream, then modify the pitch and tempo of the second to match.
     """
 
-    def __init__(self):
+    def __init__(self, get_audio_over_ros):
         """ Initialize entrainer for detecting pitch and tempo. """
         # Where is Praat? Assumes it has been added to your PATH.
         self.praat = "praat"
@@ -56,17 +57,29 @@ class AudioEntrainer():
         # - Human adult female speech: generally 165-255Hz.
         self._floor_pitch = 100
         self._ceiling_pitch = 600
-        # For audio recording.
-        self._buffer_size = 2048
-        self._samplerate = 44100 #TODO Pass sample rate in as argument?
-        self._n_channels = 1
+
+        # These are the settings that the ROS android microphone node uses for
+        # getting audio. TODO we may want that node to send an "audio info
+        # "message with this information, so that we don't have to hope we stay
+        # in sync with its settings.
+        if get_audio_over_ros:
+            self._buffer_size = 2048
+            self._samplerate = 16000
+            self._n_channels = 1
+            self.sample_size = 2
+        # Otherwise, we record audio from a local microphone.
+        else:
+            self._buffer_size = 2048
+            self._samplerate = 44100
+            self._n_channels = 1
 
         # Set up to detect pitch.
         _tolerance = 0.8
         _win_s = 4096 # fft size
         _hop_s = self._buffer_size # hop size
         # Set up the aubio pitch detector.
-        self.pitch_detector = aubio.pitch("default", _win_s, _hop_s, self._samplerate)
+        self.pitch_detector = aubio.pitch("default", _win_s, _hop_s,
+                self._samplerate)
         self.pitch_detector.set_unit("Hz")
         self.pitch_detector.set_tolerance(_tolerance)
 
@@ -126,18 +139,17 @@ class AudioEntrainer():
             return 220
 
 
-    def entrain_from_mic(self, source_file, out_file, out_dir, use_praat,
-            target_age):
-        """ Open the microphone to get an incoming audio stream. If the
-        use_praat flag is set, save the first section of audio that is probably
-        speech to a wav file and use that as the target when processing with
-        Praat.
+    def entrain_from_mic(self, source_file, out_file, out_dir, target_age):
+        """ Open the microphone to get an incoming audio stream. Save the first
+        section of audio that is probably speech to a wav file and use that as
+        the target when processing with Praat.
         """
         # Initialize pyaudio.
         pyaud = pyaudio.PyAudio()
 
         # Open stream.
         pyaudio_format = pyaudio.paInt16
+        self.sample_size = pyaud.get_sample_size(pyaudio_format)
         stream = pyaud.open(format=pyaudio_format,
                         channels=self._n_channels,
                         rate=self._samplerate,
@@ -213,35 +225,17 @@ class AudioEntrainer():
                 # If we have sufficient incoming audio and there's been a long
                 # silence, stop listening on the mic and process.
                 if len(incoming_pitches) >= 30 and running_total_silence > 5:
-                    if use_praat:
-                        # TODO file name for target? append date/time
-                        # so we know later what was processed to get the
-                        # morphed source?
-                        target_file = "temp.wav"
-                        wav_file = wave.open(target_file, 'wb')
-                        wav_file.setnchannels(self._n_channels)
-                        wav_file.setsampwidth(pyaud.get_sample_size(pyaudio_format))
-                        wav_file.setframerate(self._samplerate)
+                    # TODO file name for target? append date/time
+                    # so we know later what was processed to get the
+                    # morphed source?
+                    target_file = "target-temp.wav"
+                    self.save_to_wav(f, target_file)
 
-                        wav_file.writeframes(b''.join(f))
-                        #print("frames: {}".format(type(frames)))
-                        #for frame in frames:
-                            #wav_file.writeframes(frame)
-                            #print("frame: {}".format(type(frame)))
-                            #wav_file.writeframes(struct.pack('s'*len(frame), *frame))
-                        wav_file.close()
-
-                        # Use a Praat script to morph the source audio
-                        # to match what's coming over the mic.
-                        # TODO
-                        self._entrain_from_file_praat(target_file, source_file,
-                                out_file, out_dir, target_age)
-
-                    # Or don't use Praat. Does not do as much, but is all
-                    # in python.
-                    else:
-                        # Morph source audio file and write to new file.
-                        self.morph_audio(incoming_pitches, source_file)
+                    # Use a Praat script to morph the source audio
+                    # to match what's coming over the mic.
+                    # TODO
+                    self.entrain_from_file_praat(target_file, source_file,
+                            out_file, out_dir, target_age)
                     break
 
             # Stop processing.
@@ -254,17 +248,12 @@ class AudioEntrainer():
         pyaud.terminate()
 
 
-    def _entrain_from_file_praat(self, target_file, source_file, out_file,
+    def entrain_from_file_praat(self, target_file, source_file, out_file,
             out_dir, target_age):
         """ Use a Praat script to morph the given source audio file to match the
         specified target audio file, and save with the provided output file name
         to the specified output directory.
         """
-        if not os.path.exists(self.praat):
-            raise FileNotFound(self.praat)
-        if not os.path.exists(self.script):
-            raise FileNotFound(self.script)
-
         if out_file is None:
             out_file = source_file + "-morphed.wav"
 
@@ -285,77 +274,112 @@ class AudioEntrainer():
         # TODO error handling? what if praat fails to execute?
 
 
+    def save_to_wav(self, data, filename):
+        """ Save the given audio data to a wav file. """
+        target_file = filename
+        wav_file = wave.open(target_file, 'wb')
+        wav_file.setnchannels(self._n_channels)
+        wav_file.setsampwidth(self.sample_size)
+        wav_file.setframerate(self._samplerate)
+        wav_file.writeframes(b''.join(data))
+        wav_file.close()
+
+
 
 def on_android_audio_msg(data):
     """ When we get an AndroidAudio message, collect the audio into an
-    array for later processing, but only if it's the child's turn to
-    speak and the child is speaking.
+    array for later processing, but only if it's the participant's turn to
+    speak and the participant is speaking.
     """
-    print("TODO")
+    if data.is_streaming and is_speaking and is_participant_turn:
+        global audio_data
+        audio_data.append(data.data)
+
 
 def on_speaking_binary_msg(data):
     """ When we get a speaking binary message, store whether or not someone
     is speaking, for later reference.
     """
-    global last_sb
-    last_sb = int(data.data)
+    global is_speaking
+    is_speaking = int(data.data)
+
 
 def on_interaction_state_msg(data):
     """ When we get a message with information about the interaction state,
     such as whether it's the participant's turn to speak, store for later
     reference, and collect audio to entrain to.
     """
-    print("TODO")
-    # Parse message.
+    # If it's the participant's turn to speak, we should collect audio, and
+    # use what the participant says to entrain the robot's next speech.
+    global is_participant_turn
+    is_participant_turn = data.is_participant_turn
 
-    # If it's the participant's turn to speak, we should collect audio, and use 
-    # what the participant says to entrain the robot's next speech.
 
 def on_entrain_audio_msg(data):
     """ When we get an message telling us to entrain audio, use the audio we've
     recently collected and the given age to morph the given audio file, and
     send that audio file to the robot.
     """
-    print("TODO")
-    # Parse message.
+    if not args.use_mic:
+        # Save audio collected so far to wav file.
+        # TODO file name for target? Append participant ID, date, and time so
+        # we know later what target was processed to get the morphed source.
+        entrainer.save_to_wav(audio_data, "target-temp.wav")
 
+        # Give the source wav file (that was given to us) and the target wav
+        # file (that we collected) to Praat for processing.
+        # TODO outfile and outdir?
+        out_file = "sample-out.wav"
+        entrainer.entrain_from_file_praat("target-temp.wav", data.audio,
+                out_file, args.out_dir, data.age)
+    else:
+        # For now, collect some audio from the local mic and entrain to that.
+        # TODO Use the speaking binary and interaction state to decide when
+        # to collect audio from the local mic.
+        out_file = "sample-out.wav"
+        entrainer.entrain_from_mic(data.audio, out_file, args.out_dir, data.age)
 
 
 if __name__ == '__main__':
-    # TODO update arguments for this node -- does it need any?
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description='''Given an audio stream from the mic (default) or an audio
-            file, detect the pitch and tempo. Modify the pitch and tempo of a
-            specified audio file to match.
+        description='''Given an audio stream over ROS, detect various audio
+            features. Morph an audio file (specified via a ROS msg) to match
+            those features. Only use audio collected during the participant's
+            turn to speak, when the participant is speaking (both also
+            specified via ROS msgs). Send the morphed file to a robot. Also
+            save the morphed file to the specified output directory.
             ''')
-    parser.add_argument("audio_to_morph", type=str, nargs='?', action='store',
-            default="sample.wav", help="Audio file to morph. Default sample " +
-            "file.")
-    parser.add_argument("target_age", type=int, nargs='?', action='store',
-            default=5, help="Age of speaker providing audio to match. Default"
-            + " 5.")
-    parser.add_argument("-o", "--outfile", type=str, nargs='?', action='store',
-            default="sample-out.wav", dest="out_file",
-            help="Optional filename for morphed audio. Default sample-out.wav")
+    # The user provides an output directory where we can save audio files.
     parser.add_argument("-d", "--outdir", type=str, nargs='?', action='store',
             dest="out_dir", default="", help="Optional directory for saving "
             "audio. Default is the current working directory.")
+    # The user can decide whether to get audio from ROS or a local microphone.
+    parser.add_argument("-m", "--use-local-mic", action='store_true',
+            dest="use_mic", default=False, help="Use a local microphone " +
+            "instead of an audio stream over ROS. Default false.")
 
     # Get arguments.
     args = parser.parse_args()
     print(args)
 
+    # Set up defaults.
+    age = 5
     # If no output directory was provided, default to the current working
     # directory.
     if not args.out_dir:
         args.out_dir = os.getcwd()
 
     # Set up audio entrainer.
-    entrainer = EntrainAudio()
+    entrainer = AudioEntrainer(args.use_mic)
+
+    if not args.use_mic:
+        # Set up a deque to hold incoming data, with a max length, so that when
+        # it gets full, the oldest items are automatically discarded.
+        audio_data = deque([], maxlen=600) #TODO what's a good size?
 
     # ROS node setup:
-    # TODO if running on network where DNS does not resolve local hostnames,
+    # TODO If running on a network where DNS does not resolve local hostnames,
     # get the public IP address of this machine and export to the environment
     # variable $ROS_IP to set the public address of this node, so the user
     # doesn't have to remember to do this before starting the node.
@@ -367,30 +391,30 @@ if __name__ == '__main__':
     # teleop interface or state machine node (depending on whether this node is
     # used as part of a teleoperated or autonomous robot) about its status.
     # Set up rostopics we publish: log messages.
-    tablet_pub = rospy.Publisher('rr_audio_entrainer', String,
-            queue_size = 10)
+    pub_ae = rospy.Publisher('rr/audio_entrainer', String, queue_size = 10)
 
     # This node will listen for incoming audio, whether or not someone is
-    # speaking,  messages from the teleop interface or state machine node
+    # speaking, and messages from the teleop interface or state machine node
     # regarding whether it is the child's turn to speak or not and what the
     # name of the next audio file to morph is.
     # Subscribe to other ros nodes:
     #  - r1d1_msgs/AndroidAudio to get incoming audio stream from the robot's
-    #    microphone
+    #    microphone (if we are not using a local microphone)
     #  - speaking binary, from the backchanneling module TODO
     #  - child turn, perhaps part of an overall interaction state, from teleop
     #    interface or state machine node TODO
     #  - entrainment message, which sends a string with the name of the audio
-    #    to morph next
+    #    to morph next and the age of the speaker
 
     # TODO fill in topic names for all of the below:
-    sub_audio = rospy.Subscriber('topic_name', 'r1d1_msgs/AndroidAudio',
-            self.on_android_audio_msg)
+    if not args.use_mic:
+        sub_audio = rospy.Subscriber('topic_name', AndroidAudio,
+                on_android_audio_msg)
     sub_sb = rospy.Subscriber('msg_sb/raw', Int32, on_speaking_binary_msg)
-    sub_state = rospy.Subscriber('topic_name', String,
-            self.on_interaction_state_msg)
-    sub_entrain = rospy.Subscriber('topic_name', 'rr_msgs/EntrainAudio',
-            self.on_entrain_audio_msg)
+    sub_state = rospy.Subscriber('/rr/state', InteractionState,
+            on_interaction_state_msg)
+    sub_entrain = rospy.Subscriber('/rr/entrain_audio', EntrainAudio,
+            on_entrain_audio_msg)
 
     try:
         rospy.spin()
