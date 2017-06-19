@@ -36,8 +36,11 @@ as speaking rate and pitch, and morph the source to match these features.
 
 ### Praat
 
-To morph audio using Praat, you must have [Praat](www.praat.org) installed.
-Then, add the path to the Praat executable to your `PATH`. For example, if you've put Praat in the directory `/home/myusername/bin`, you would run:
+To morph audio using Praat, you must have [Praat](www.praat.org) installed. The
+version you can install from ports on linux is old and the Praat script may not
+run correctly, so I recommend installing the binary from the website. Then, add
+the path to the Praat executable to your `PATH`. For example, if you've put
+Praat in the directory `/home/myusername/bin`, you would run:
 
 `export PATH=/home/myusername/bin:$PATH`
 
@@ -104,7 +107,7 @@ This program was developed and tested with:
 - Praat 6.0.29
 - Mac OS X 10.10.5 (demo only)
 - Ubuntu 14.04 LTS 32-bit (demo and ROS node)
-- ROS Indigo
+- ROS Indigo (ROS node only)
 
 ## Bugs and issues
 
