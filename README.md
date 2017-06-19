@@ -75,9 +75,26 @@ optional arguments:
 - `-p`, `--use_praat`: Use the built-in Praat script for audio processing
 - `-i [INCOMING_AUDIO]`, `--incoming_audio [INCOMING_AUDIO]`: Optional audio
   file to match (.wav).
-- `-o [OUT_FILE]`, `--outfile [OUT_FILE]`: Optional filename for morphed audio (.wav).
+- `-o [OUT_FILE]`, `--outfile [OUT_FILE]`: Optional filename for morphed audio
+  (.wav).
 - `-d [OUT_DIR]`, `--outdir [OUT_DIR]`: Optional directory for saving audio.
   Default is the current working directory.
+
+## ROS node
+
+If you are using a virtualenv, make sure to source the `activate` shell script.
+
+If you are using Ubuntu 14.04, make sure to source the `libpath_for_praat.sh`
+script.
+
+### ROS messages
+
+#### R1D1 messages
+The program subscribes to "/[r1d1\_msgs](https://github.com/mitmedialab/r1d1_msgs "/r1d1_msgs")/AndroidAudio" on the ROS topic "/???".
+
+#### other messages...
+TODO
+
 
 ## Version notes
 
