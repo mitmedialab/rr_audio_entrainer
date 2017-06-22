@@ -236,6 +236,7 @@ class AudioEntrainer():
                     # TODO
                     self.entrain_from_file_praat(target_file, source_file,
                             out_file, out_dir, target_age)
+
                     break
 
             # Stop processing.
@@ -270,7 +271,6 @@ class AudioEntrainer():
         # and finally, save the adjusted source as a new wav.
         subprocess.call([self.praat, "--run", self.script, source_file,
             target_file, out_file, out_dir, str(ff_age)])
-
         # TODO error handling? what if praat fails to execute?
 
 
@@ -285,13 +285,15 @@ class AudioEntrainer():
         wav_file.close()
 
 
-
 def on_android_audio_msg(data):
     """ When we get an AndroidAudio message, collect the audio into an
-    array for later processing, but only if it's the participant's turn to
-    speak and the participant is speaking.
+    array for later processing.
     """
-    if data.is_streaming and is_speaking and is_participant_turn:
+    # Collect audio if it's the participant's turn to speak, and if the
+    # participant is speaking. We arbitrarily wait for at least a few samples of
+    # speech before collecting, and we collect silences/non-speech audio only
+    # if they are sufficiently short. #TODO threshold for collecting?
+    if is_participant_turn and data.is_streaming and is_speaking > 4:
         global audio_data
         audio_data.append(data.data)
 
@@ -300,8 +302,18 @@ def on_speaking_binary_msg(data):
     """ When we get a speaking binary message, store whether or not someone
     is speaking, for later reference.
     """
-    global is_speaking
-    is_speaking = int(data.data)
+    if data.data:
+        global is_speaking
+        is_speaking += 1
+        if is_speaking > 4: #TODO threshold?
+            global not_speaking
+            not_speaking = 0
+    else:
+        global not_speaking
+        not_speaking += 1
+        if not_speaking > 20: #TODO threshold?
+            global is_speaking
+            is_speaking = 0
 
 
 def on_interaction_state_msg(data):
@@ -354,10 +366,14 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--outdir", type=str, nargs='?', action='store',
             dest="out_dir", default="", help="Optional directory for saving "
             "audio. Default is the current working directory.")
-    # The user can decide whether to get audio from ROS or a local microphone.
-    parser.add_argument("-m", "--use-local-mic", action='store_true',
-            dest="use_mic", default=False, help="Use a local microphone " +
-            "instead of an audio stream over ROS. Default false.")
+    # The user can decide whether to get audio from either of two different ROS
+    # nodes or a local microphone.
+    parser.add_argument("-a", "--audio-source", action='store',
+            dest="src", choices=["m", "mic", "o", "opensmile", "a", "android"],
+            default="opensmile", help="Use a local microphone (m), an " +
+            "audio stream over ROS from opensmile in the backchannel module " +
+            "(o), or an audio stream over ROS from an Android mic (a). "
+            + "Default opensmile.")
 
     # Get arguments.
     args = parser.parse_args()
@@ -365,13 +381,17 @@ if __name__ == '__main__':
 
     # Set up defaults.
     age = 5
+    is_participant_turn = 0
+    is_speaking = 0
+    not_speaking = 0
     # If no output directory was provided, default to the current working
     # directory.
     if not args.out_dir:
         args.out_dir = os.getcwd()
 
     # Set up audio entrainer.
-    entrainer = AudioEntrainer(args.use_mic)
+    use_ros = True if args.src is not "m" and args.src is not "mic" else False
+    entrainer = AudioEntrainer(use_ros)
 
     if not args.use_mic:
         # Set up a deque to hold incoming data, with a max length, so that when
@@ -396,25 +416,26 @@ if __name__ == '__main__':
     # This node will listen for incoming audio, whether or not someone is
     # speaking, and messages from the teleop interface or state machine node
     # regarding whether it is the child's turn to speak or not and what the
-    # name of the next audio file to morph is.
-    # Subscribe to other ros nodes:
-    #  - r1d1_msgs/AndroidAudio to get incoming audio stream from the robot's
-    #    microphone (if we are not using a local microphone)
-    #  - speaking binary, from the backchanneling module TODO
-    #  - child turn, perhaps part of an overall interaction state, from teleop
-    #    interface or state machine node TODO
-    #  - entrainment message, which sends a string with the name of the audio
-    #    to morph next and the age of the speaker
-
+    # name of the next audio file to morph is. Subscribe to other ros nodes:
     # TODO fill in topic names for all of the below:
-    if not args.use_mic:
-        sub_audio = rospy.Subscriber('topic_name', AndroidAudio,
+    if use_ros:
+        # If we are not using the local microphone, we are using ROS...
+        # Speaking binary, from the backchanneling module.
+        sub_sb = rospy.Subscriber('msg_sb/raw', Int32, on_speaking_binary_msg)
+        # Use r1d1_msgs/AndroidAudio to get incoming audio stream from the
+        # robot's microphone or a standalone android microphone app.
+        sub_audio = rospy.Subscriber('android_audio', AndroidAudio,
                 on_android_audio_msg)
-    sub_sb = rospy.Subscriber('msg_sb/raw', Int32, on_speaking_binary_msg)
+
+    #  Child turn, perhaps part of an overall interaction state, from teleop
+    #  interface or state machine node. TODO
     sub_state = rospy.Subscriber('/rr/state', InteractionState,
             on_interaction_state_msg)
+    #  Entrainment message, which sends a string with the name of the audio to
+    #  morph next and the age of the speaker.
     sub_entrain = rospy.Subscriber('/rr/entrain_audio', EntrainAudio,
             on_entrain_audio_msg)
+
 
     try:
         rospy.spin()

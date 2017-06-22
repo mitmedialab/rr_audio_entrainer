@@ -95,7 +95,7 @@ script.
 #### R1D1 messages
 
 The node subscribes to "/[r1d1\_msgs](https://github.com/mitmedialab/r1d1_msgs
-"/r1d1_msgs")/AndroidAudio" on the ROS topic "/???".
+"/r1d1_msgs")/AndroidAudio" on the ROS topic "/android_audio".
 
 #### Speaking binary
 
