@@ -90,6 +90,24 @@ If you are using a virtualenv, make sure to source the `activate` shell script.
 If you are using Ubuntu 14.04, make sure to source the `libpath_for_praat.sh`
 script.
 
+### Usage
+`entrain_speech_node.py [-h] [-i IP_ADDR] [-d [OUT_DIR]] [-r USE_ROS]`
+
+Given an audio stream over ROS, detect various audio features. Morph an audio
+file (specified via a ROS msg) to match those features. Only use audio
+collected during the participant's turn to speak, when the participant is
+speaking (both also specified via ROS msgs). Send the morphed file to a robot.
+Also save the morphed file to the specified output directory.
+
+optional arguments:
+  - `-h`, `--help`: show this help message and exit
+  - `-i IP_ADDR`, `--ipaddr IP_ADDR`: The IP address of the machine running
+    this node. Used to serve audio files to the robot.
+  - `-d [OUT_DIR]`, `--outdir [OUT_DIR]`: Optional directory for saving audio.
+    Default is the current working directory.
+  - `-r USE_ROS`, `--use-ros USE_ROS`: Use a local microphone or an audio
+    stream ROS from an Android mic (i.e., the robot). Default local mic.
+
 ### ROS messages
 
 #### R1D1 messages

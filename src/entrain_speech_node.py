@@ -34,10 +34,14 @@ import struct
 # ROS and ROS msgs
 import rospy
 from r1d1_msgs.msg import AndroidAudio
+from r1d1_msgs.msg import TegaAction
 from rr_msgs.msg import EntrainAudio
 from rr_msgs.msg import InteractionState
 from std_msgs.msg import String
 from std_msgs.msg import Int32
+# For streaming audio to the robot.
+import SimpleHTTPServer
+import SocketServer
 
 class AudioEntrainer():
     """ Given an audio stream and an audio file, detect the pitch and tempo of
@@ -332,7 +336,7 @@ def on_entrain_audio_msg(data):
     recently collected and the given age to morph the given audio file, and
     send that audio file to the robot.
     """
-    if not args.use_mic:
+    if args.use_ros:
         # Save audio collected so far to wav file.
         # TODO file name for target? Append participant ID, date, and time so
         # we know later what target was processed to get the morphed source.
@@ -344,12 +348,26 @@ def on_entrain_audio_msg(data):
         out_file = "sample-out.wav"
         entrainer.entrain_from_file_praat("target-temp.wav", data.audio,
                 out_file, args.out_dir, data.age)
+
     else:
         # For now, collect some audio from the local mic and entrain to that.
         # TODO Use the speaking binary and interaction state to decide when
         # to collect audio from the local mic.
         out_file = "sample-out.wav"
         entrainer.entrain_from_mic(data.audio, out_file, args.out_dir, data.age)
+
+    # After audio is entrained, stream to the robot.
+    send_tega_action_message(server + out_file)
+
+
+def send_tega_action_message(audio_file):
+    """ Publish TegaAction message to playback audio. """
+    print '\nsending speech message: %s' % audio_file
+    msg = TegaAction()
+    msg.do_sound_playback = True
+    msg.wav_filename = audio_file
+    pub_tega_action.publish(msg)
+    rospy.loginfo(msg)
 
 
 if __name__ == '__main__':
@@ -362,41 +380,58 @@ if __name__ == '__main__':
             specified via ROS msgs). Send the morphed file to a robot. Also
             save the morphed file to the specified output directory.
             ''')
+    # The user has to provide the IP address of the machine running this node.
+    parser.add_argument("-i", "--ipaddr", type=str, nargs=1, action='store',
+            dest="ip_addr", default="192.168.1.48", help="The IP address of the"
+            + " machine running this node. Used to serve audio files to the "
+            + "robot.")
     # The user provides an output directory where we can save audio files.
     parser.add_argument("-d", "--outdir", type=str, nargs='?', action='store',
             dest="out_dir", default="", help="Optional directory for saving "
             "audio. Default is the current working directory.")
-    # The user can decide whether to get audio from either of two different ROS
-    # nodes or a local microphone.
-    parser.add_argument("-a", "--audio-source", action='store',
-            dest="src", choices=["m", "mic", "o", "opensmile", "a", "android"],
-            default="opensmile", help="Use a local microphone (m), an " +
-            "audio stream over ROS from opensmile in the backchannel module " +
-            "(o), or an audio stream over ROS from an Android mic (a). "
-            + "Default opensmile.")
+    # The user can decide whether to get audio from ROS or a local microphone.
+    parser.add_argument("-r", "--use-ros", action='store', dest="use_ros",
+            default=True, help="Use a local microphone or an audio stream " +
+            "ROS from an Android mic (i.e., the robot). Default local mic.")
 
     # Get arguments.
     args = parser.parse_args()
     print(args)
 
-    # Set up defaults.
-    age = 5
-    is_participant_turn = 0
-    is_speaking = 0
-    not_speaking = 0
     # If no output directory was provided, default to the current working
     # directory.
     if not args.out_dir:
         args.out_dir = os.getcwd()
 
-    # Set up audio entrainer.
-    use_ros = True if args.src is not "m" and args.src is not "mic" else False
-    entrainer = AudioEntrainer(use_ros)
+    # Set up defaults.
+    age = 5
+    is_participant_turn = 0
+    global is_speaking
+    is_speaking = 0
+    global not_speaking
+    not_speaking = 0
 
-    if not args.use_mic:
+    # Set up HTTP server to serve morphed wav files to the robot.
+    # TODO this needs to be on its own thread, as it is blocking. For now, run
+    # in a separate python shell.
+    # Change directory to serve from the directory where we save audio output.
+    #os.chdir(args.out_dir)
+    port = 8000
+    #Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
+    #httpd = SocketServer.TCPServer(("", port), Handler)
+    #print "Serving at port", port
+    #httpd.serve_forver()
+
+    # Stream audio to the robot from this address.
+    server = "http://" + args.ip_addr + ":" + str(port) + "/"
+
+    # Set up audio entrainer.
+    entrainer = AudioEntrainer(args.use_ros)
+
+    if args.use_ros:
         # Set up a deque to hold incoming data, with a max length, so that when
         # it gets full, the oldest items are automatically discarded.
-        audio_data = deque([], maxlen=600) #TODO what's a good size?
+        audio_data = deque([], maxlen=1000) #TODO what's a good size?
 
     # ROS node setup:
     # TODO If running on a network where DNS does not resolve local hostnames,
@@ -405,20 +440,22 @@ if __name__ == '__main__':
     # doesn't have to remember to do this before starting the node.
     ros_node = rospy.init_node('rr_audio_entrainer', anonymous=False)
 
-    # This node will send the morphed wav file to the robot using an rftp or
-    # http stream, which can be used a source for the robot's mediaplayer.
-    # It only needs to publish messages for logging purposes and to let the
-    # teleop interface or state machine node (depending on whether this node is
-    # used as part of a teleoperated or autonomous robot) about its status.
-    # Set up rostopics we publish: log messages.
+    # This node will send the morphed wav file to the robot using an http
+    # stream, which can be used a source for the robot's mediaplayer. Thus, it
+    # publishes TegaAction messages to the robot with the http address of each
+    # audio file to stream. It may also publish publish messages for logging
+    # purposes and to let the teleop interface or state machine node (depending
+    # on whether this node is used as part of a teleoperated or autonomous
+    # robot) about its status.
+    # Set up rostopics we publish: log messages, TegaAction.
     pub_ae = rospy.Publisher('rr/audio_entrainer', String, queue_size = 10)
+    pub_tega_action = rospy.Publisher('tega', TegaAction, queue_size = 10)
 
     # This node will listen for incoming audio, whether or not someone is
     # speaking, and messages from the teleop interface or state machine node
     # regarding whether it is the child's turn to speak or not and what the
     # name of the next audio file to morph is. Subscribe to other ros nodes:
-    # TODO fill in topic names for all of the below:
-    if use_ros:
+    if args.use_ros:
         # If we are not using the local microphone, we are using ROS...
         # Speaking binary, from the backchanneling module.
         sub_sb = rospy.Subscriber('msg_sb/raw', Int32, on_speaking_binary_msg)
@@ -435,7 +472,6 @@ if __name__ == '__main__':
     #  morph next and the age of the speaker.
     sub_entrain = rospy.Subscriber('/rr/entrain_audio', EntrainAudio,
             on_entrain_audio_msg)
-
 
     try:
         rospy.spin()
