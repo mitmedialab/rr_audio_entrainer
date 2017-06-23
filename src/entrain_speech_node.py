@@ -170,8 +170,7 @@ class AudioEntrainer():
 
         # TODO: Listen on the microphone only when we know it's the child's turn
         # to speak (and process only the audio collected during their speech
-        # turn). For now, assume that it's the child's turn when the program
-        # starts, and that the robot's turn starts on a key press.
+        # turn).
 
         # Running total of potential speech frames.
         running_total_speech = 0
@@ -187,7 +186,7 @@ class AudioEntrainer():
                 confidence = self.pitch_detector.get_confidence()
                 print("{} / {}".format(pitch,confidence))
 
-                # TODO For now, we just check the pitch to see if it is probably
+                # For now, we just check the pitch to see if it is probably a
                 # part of human speech or not. If we get enough values in a row
                 # that are probably speech, we use those as the target signal
                 # for morphing the specified audio file. If we get a long pause,
@@ -195,8 +194,6 @@ class AudioEntrainer():
                 # a row to act as a target. This will probably have to change to
                 # something more intelligent later. For example, we could check
                 # if the values are over some threshold for volume or energy.
-                # Or, use the ROS speaking binary, and stop processing when
-                # speech stops.
                 if pitch > self._floor_pitch and pitch < self._ceiling_pitch:
                     running_total_speech += 1
                     if running_total_speech > 4:
@@ -212,7 +209,7 @@ class AudioEntrainer():
                     # If we've had a lot of silence in a row, or non-speech
                     # sound, there's probably a pause or no speech.
                      # TODO Pick good values for these:
-                    if running_total_silence > 6 and running_total_speech < 30:
+                    if running_total_silence > 6 and running_total_speech < 20:
                         print("\tsilence")
                         running_total_speech = 0
                     else:
@@ -228,7 +225,7 @@ class AudioEntrainer():
                 # Check to see if we need to process the incoming audio yet.
                 # If we have sufficient incoming audio and there's been a long
                 # silence, stop listening on the mic and process.
-                if len(incoming_pitches) >= 30 and running_total_silence > 5:
+                if len(incoming_pitches) >= 20 and running_total_silence > 5:
                     # TODO file name for target? append date/time
                     # so we know later what was processed to get the
                     # morphed source?
@@ -237,12 +234,9 @@ class AudioEntrainer():
 
                     # Use a Praat script to morph the source audio
                     # to match what's coming over the mic.
-                    # TODO
                     self.entrain_from_file_praat(target_file, source_file,
                             out_file, out_dir, target_age)
-
                     break
-
             # Stop processing.
             except KeyboardInterrupt:
                 print("*** Keyboard interrupt, exiting")
