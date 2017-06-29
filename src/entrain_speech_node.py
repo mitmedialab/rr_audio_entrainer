@@ -63,12 +63,11 @@ class AudioEntrainer():
         self._ceiling_pitch = 600
 
         # These are the settings that the ROS android microphone node uses for
-        # getting audio. TODO we may want that node to send an "audio info
-        # "message with this information, so that we don't have to hope we stay
-        # in sync with its settings.
+        # getting audio. These are defaults; we will update them after we get
+        # the actual values from the audio messages.
         if get_audio_over_ros:
             self._buffer_size = 2048
-            self._samplerate = 16000
+            self._samplerate = 44100
             self._n_channels = 1
             self.sample_size = 2
         # Otherwise, we record audio from a local microphone.
@@ -274,12 +273,17 @@ class AudioEntrainer():
 
     def save_to_wav(self, data, filename):
         """ Save the given audio data to a wav file. """
-        target_file = filename
-        wav_file = wave.open(target_file, 'wb')
+        print ("saving to wav: filename")
+        wav_file = wave.open(filename, 'wb')
         wav_file.setnchannels(self._n_channels)
         wav_file.setsampwidth(self.sample_size)
         wav_file.setframerate(self._samplerate)
-        wav_file.writeframes(b''.join(data))
+        if args.use_ros:
+            while len(data) > 0:
+                d = data.popleft()
+                wav_file.writeframes(struct.pack("h"*len(d),*d))
+        else:
+            wav_file.writeframes(b''.join(data))
         wav_file.close()
 
 
@@ -293,8 +297,11 @@ def on_android_audio_msg(data):
     # if they are sufficiently short. #TODO threshold for collecting?
     if is_participant_turn and data.is_streaming and is_speaking > 4:
         global audio_data
-        audio_data.append(data.data)
+        audio_data.append(data.samples)
 
+    self._samplerate = data.sample_rate
+    self._n_channels = data.nchannels
+    self.sample_size = data.sample_width
 
 def on_speaking_binary_msg(data):
     """ When we get a speaking binary message, store whether or not someone
@@ -386,7 +393,7 @@ if __name__ == '__main__':
     # The user can decide whether to get audio from ROS or a local microphone.
     parser.add_argument("-r", "--use-ros", action='store', dest="use_ros",
             default=True, help="Use a local microphone or an audio stream " +
-            "ROS from an Android mic (i.e., the robot). Default local mic.")
+            "ROS from an Android mic (i.e., the robot). Default ROS.")
 
     # Get arguments.
     args = parser.parse_args()
@@ -417,15 +424,16 @@ if __name__ == '__main__':
     #httpd.serve_forver()
 
     # Stream audio to the robot from this address.
-    server = "http://" + args.ip_addr + ":" + str(port) + "/"
+    server = "http://" + str(args.ip_addr[0]) + ":" + str(port) + "/"
 
     # Set up audio entrainer.
     entrainer = AudioEntrainer(args.use_ros)
 
     if args.use_ros:
         # Set up a deque to hold incoming data, with a max length, so that when
-        # it gets full, the oldest items are automatically discarded.
-        audio_data = deque([], maxlen=1000) #TODO what's a good size?
+        # it gets full, the oldest items are automatically discarded. The max
+        # length is set such that about 30s of audio are kept (at 24 fps).
+        audio_data = deque([], maxlen=720)
 
     # ROS node setup:
     # TODO If running on a network where DNS does not resolve local hostnames,
