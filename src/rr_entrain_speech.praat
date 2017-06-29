@@ -166,11 +166,14 @@ select result
 # threshold amount, shift the source up a little. Otherwise, if the the target's
 # mean pitch is lower than the source's mean pitch by some threshold amount,
 # shift the source down a little.
+
 #TODO range?
-if target_mean_pitch > (age_mean_pitch + 30)
-    adjust_pitch_by = (source_mean_pitch - age_mean_pitch) + 30
-else if target_mean_pitch < (age_mean_pitch - 30)
-    adjust_pitch_by = (source_mean_pitch - age_mean_pitch) - 30
+if target_mean_pitch = undefined
+    adjust_pitch_by = 0
+else if target_mean_pitch > age_mean_pitch + 30
+    adjust_pitch_by = source_mean_pitch - age_mean_pitch + 30
+else if target_mean_pitch < age_mean_pitch - 30
+    adjust_pitch_by = source_mean_pitch - age_mean_pitch - 30
 else
     adjust_pitch_by = source_mean_pitch - age_mean_pitch
 endif
