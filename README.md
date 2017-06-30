@@ -124,12 +124,12 @@ topic "/msg_sb/raw".
 #### Relational robot messages
 
 The node subscribes to
-"/[rr_msgs](https://github.com/mitmedialab/rr_msgs)/EntrainAudio" on the ROS
-topic "/rr/entrain_audio".
+"/[rr_msgs](https://github.com/mitmedialab/rr_msgs)/EntrainAudio" messages on
+the ROS topic "/rr/entrain_audio".
 
 The node also subscribes to
-"/[rr_msgs](https://github.com/mitmedialab/rr_msgs)/interaction_state" on the
-ROS topic "/rr/state".
+"/[rr_msgs](https://github.com/mitmedialab/rr_msgs)/InteractionState" messages
+on the ROS topic "/rr/state".
 
 
 ## Version notes
