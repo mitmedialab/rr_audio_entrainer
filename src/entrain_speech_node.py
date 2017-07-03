@@ -35,6 +35,7 @@ import struct
 import rospy
 from r1d1_msgs.msg import AndroidAudio
 from r1d1_msgs.msg import TegaAction
+from r1d1_msgs.msg import Viseme
 from rr_msgs.msg import EntrainAudio
 from rr_msgs.msg import InteractionState
 from std_msgs.msg import String
@@ -288,6 +289,49 @@ class AudioEntrainer():
         wav_file.close()
 
 
+    def process_visemes(self, original_audio, morphed_audio, morphed_dir,
+            viseme_file):
+        """ Because the audio entrainer may change the speaking rate of the
+        audio file provided, we also should adjust the timestamps of the
+        phonemes in the viseme file to match.
+        """
+        # Open the original audio file and the morphed file, get the durations,
+        # and figure out how much to change the viseme file (if at all).
+        print "Updating viseme file to match morphed audio..."
+        orig = wave.open(original_audio, 'r')
+        orig_length = orig.getnframes() / (float)(orig.getframerate())
+        morphed = wave.open(morphed_dir + "/" + morphed_audio, 'r')
+        morphed_length = morphed.getnframes() / (float)(morphed.getframerate())
+        diff = orig_length - morphed_length * 1000.0
+        print "Difference in lengths: " + str(diff)
+        # Read in the viseme file for processing.
+        lines = []
+        try:
+            vfile = open(viseme_file)
+            for line in vfile:
+                lines.append(line.strip().split(" "))
+            vfile.close()
+        except Exception as e:
+            print "Could not read viseme file: " + viseme_file
+            print e
+
+        # The viseme files have a header line, so subtract it from the total.
+        # Change each viseme time by a small portion of the total difference.
+        change_by = diff / (len(lines) - 1)
+        vs = []
+        for line in lines:
+            print line
+            if len(line) > 1:
+                try:
+                    v = Viseme(line[1], int(int(line[0]) + change_by))
+                    vs.append(v)
+                except Exception as e:
+                    print "Could not change viseme line: %s" % line
+                    print e
+        # Return array of phoneme / viseme-time pairs.
+        return vs
+
+
 def on_android_audio_msg(data):
     """ When we get an AndroidAudio message, collect the audio into an
     array for later processing.
@@ -341,6 +385,7 @@ def on_entrain_audio_msg(data):
     recently collected and the given age to morph the given audio file, and
     send that audio file to the robot.
     """
+    visemes = []
     if args.use_ros:
         # Save audio collected so far to wav file.
         # TODO file name for target? Append participant ID, date, and time so
@@ -354,6 +399,10 @@ def on_entrain_audio_msg(data):
         entrainer.entrain_from_file_praat("target-temp.wav", data.audio,
                 out_file, args.out_dir, data.age)
 
+        # Adjust the viseme file times to match the morphed audio.
+        visemes = entrainer.process_visemes(data.audio, out_file, args.out_dir,
+                data.viseme_file)
+
     else:
         # For now, collect some audio from the local mic and entrain to that.
         # TODO Use the speaking binary and interaction state to decide when
@@ -362,15 +411,16 @@ def on_entrain_audio_msg(data):
         entrainer.entrain_from_mic(data.audio, out_file, args.out_dir, data.age)
 
     # After audio is entrained, stream to the robot.
-    send_tega_action_message(server + out_file)
+    send_tega_action_message(server + out_file, visemes)
 
 
-def send_tega_action_message(audio_file):
+def send_tega_action_message(audio_file, visemes):
     """ Publish TegaAction message to playback audio. """
     print '\nsending speech message: %s' % audio_file
     msg = TegaAction()
     msg.do_sound_playback = True
     msg.wav_filename = audio_file
+    msg.visemes = visemes
     pub_tega_action.publish(msg)
     rospy.loginfo(msg)
 
