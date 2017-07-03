@@ -299,10 +299,13 @@ def on_android_audio_msg(data):
     if is_participant_turn and data.is_streaming and is_speaking > 4:
         global audio_data
         audio_data.append(data.samples)
+    global samplerate
+    samplerate = data.sample_rate
+    global n_channels
+    n_channels = data.nchannels
+    global sample_size
+    sample_size = data.sample_width
 
-    self._samplerate = data.sample_rate
-    self._n_channels = data.nchannels
-    self.sample_size = data.sample_width
 
 def on_speaking_binary_msg(data):
     """ When we get a speaking binary message, store whether or not someone
