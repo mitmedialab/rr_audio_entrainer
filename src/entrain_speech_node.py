@@ -162,10 +162,11 @@ class AudioEntrainer():
         # Process microphone stream until we get a keyboard interrupt.
         # Set up a deque to hold incoming data, with a max length, so that when
         # it gets full, the oldest items are automatically discarded. Use one
-        # to get the raw data, and another for the pitch values.
-        frames = deque([], maxlen=600) #TODO what's a good size?
+        # to get the raw data, and another for the pitch values. The max
+        # length is set such that about 30s of audio are kept (at 24 fps).
+        frames = deque([], maxlen=720)
         f = []
-        incoming_pitches = deque([], maxlen=600)
+        incoming_pitches = deque([], maxlen=720)
 
         # TODO: Listen on the microphone only when we know it's the child's turn
         # to speak (and process only the audio collected during their speech
