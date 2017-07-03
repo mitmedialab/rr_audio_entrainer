@@ -29,7 +29,8 @@ import aubio # pitch detection (GNU/GPL license)
 from collections import deque # queue for incoming audio
 import os
 import subprocess
-import wave # for saving wav files
+import wave # For saving wav files
+import time # For adding timestamps to audio filenames.
 import struct
 # ROS and ROS msgs
 import rospy
@@ -227,10 +228,10 @@ class AudioEntrainer():
                 # If we have sufficient incoming audio and there's been a long
                 # silence, stop listening on the mic and process.
                 if len(incoming_pitches) >= 20 and running_total_silence > 5:
-                    # TODO file name for target? append date/time
-                    # so we know later what was processed to get the
-                    # morphed source?
-                    target_file = "target-temp.wav"
+                    # Append the current date and time to our output files so we
+                    # don't overwrite previous output files.
+                    t = time.strftime("%Y-%m-%d.%H:%M:%S")
+                    target_file = "target" + t + ".wav"
                     self.save_to_wav(f, target_file)
 
                     # Use a Praat script to morph the source audio
@@ -387,17 +388,17 @@ def on_entrain_audio_msg(data):
     """
     is_participant_turn = False
     visemes = []
+    # Append the current date and time to our output files so we don't
+    # overwrite previous output files.
+    t = time.strftime("%Y-%m-%d.%H:%M:%S")
     if args.use_ros:
         # Save audio collected so far to wav file.
-        # TODO file name for target? Append participant ID, date, and time so
-        # we know later what target was processed to get the morphed source.
-        entrainer.save_to_wav(audio_data, "target-temp.wav")
+        entrainer.save_to_wav(audio_data, "target-" + t + ".wav")
 
         # Give the source wav file (that was given to us) and the target wav
         # file (that we collected) to Praat for processing.
-        # TODO outfile and outdir?
-        out_file = "sample-out.wav"
-        entrainer.entrain_from_file_praat("target-temp.wav", data.audio,
+        out_file = data.audio.replace(".wav", "") + t + ".wav"
+        entrainer.entrain_from_file_praat("target-" + t + ".wav", data.audio,
                 out_file, args.out_dir, data.age)
 
         # Adjust the viseme file times to match the morphed audio.
@@ -408,7 +409,7 @@ def on_entrain_audio_msg(data):
         # For now, collect some audio from the local mic and entrain to that.
         # TODO Use the speaking binary and interaction state to decide when
         # to collect audio from the local mic.
-        out_file = "sample-out.wav"
+        out_file = "out" + t + ".wav"
         entrainer.entrain_from_mic(data.audio, out_file, args.out_dir, data.age)
 
     # After audio is entrained, stream to the robot.
@@ -523,7 +524,7 @@ if __name__ == '__main__':
                 on_android_audio_msg)
 
     #  Child turn, perhaps part of an overall interaction state, from teleop
-    #  interface or state machine node. TODO
+    #  interface or state machine node.
     sub_state = rospy.Subscriber('/rr/state', InteractionState,
             on_interaction_state_msg)
     #  Entrainment message, which sends a string with the name of the audio to
