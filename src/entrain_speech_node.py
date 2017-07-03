@@ -364,7 +364,7 @@ def on_speaking_binary_msg(data):
     else:
         global not_speaking
         not_speaking += 1
-        if not_speaking > 20: #TODO threshold?
+        if not_speaking > 40: #TODO threshold?
             global is_speaking
             is_speaking = 0
 
@@ -385,6 +385,7 @@ def on_entrain_audio_msg(data):
     recently collected and the given age to morph the given audio file, and
     send that audio file to the robot.
     """
+    is_participant_turn = False
     visemes = []
     if args.use_ros:
         # Save audio collected so far to wav file.
@@ -460,9 +461,10 @@ if __name__ == '__main__':
 
     # Set up defaults.
     age = 5
-    is_participant_turn = 0
+    global is_participant_turn
+    is_participant_turn = False
     global is_speaking
-    is_speaking = 0
+    is_speaking = 5 # TODO temporary for testing
     global not_speaking
     not_speaking = 0
 
