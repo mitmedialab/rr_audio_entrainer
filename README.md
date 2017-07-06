@@ -58,9 +58,13 @@ in `/usr/lib/` that's included in the OS. Note that this is a hack, and if
 weird stuff happens or some Praat things don't work as expected, this could be
 the cause.
 
-To check what symbol versioning your libstdc++ has, you can run:
+To check what symbol versioning your libstdc++ has,on 32-bit Ubuntu, you can run:
 
 `strings /usr/lib/i386-linux-gnu/libstdc++.so.6 | grep GLIBC`
+
+For 64-bit Ubuntu, replace the path with 64-bit Ubuntu's path to
+`libstdc++.so.6`.
+
 
 ## Demo
 
