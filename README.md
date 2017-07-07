@@ -34,6 +34,24 @@ as speaking rate and pitch, and morph the source to match these features.
     - Used in morphing audio in python, no Praat
     - BSD license
 
+#### PYTHONPATH
+You will probably have to add python's default path to your shell config. For
+Ubuntu 14.04, the line to add is:
+
+`export PYTHONPATH=$PYTHONPATH:/usr/lib/python2.7/dist-packages/'
+
+You have to add the default location to `PYTHONPATH` because initially,
+`PYTHONPATH` is not set, and thus python defaults to checking a default
+location...  but other shell config files may add to `PYTHONPATH`, thus
+_setting_ `PYTHONPATH`, which means python no longer checks its default
+location...  So we have to add the default back into the path.
+
+In particular, if you have added the ROS setup shell config files to your shell
+config file (e.g., if you have a line like `source /opt/ros/indigo/setup.bash`
+in your .bashrc), you'll need to add this line.
+
+`
+
 ### Praat
 
 To morph audio using Praat, you must have [Praat](http://www.praat.org) installed. The
@@ -44,7 +62,8 @@ Praat in the directory `/home/myusername/bin`, you would run:
 
 `export PATH=/home/myusername/bin:$PATH`
 
-If you don't want to remember to run this, add it to your shell config file (e.g., .bashrc or config.fish).
+If you don't want to remember to run this, add it to your shell config file
+(e.g., .bashrc or config.fish).
 
 On Ubuntu, Praat requires libstdc++ with symbol versioning for GLIBCXX\_3.4.21
 which isn't in Ubuntu releases prior to 16.04. As a workaround, you can embed a
@@ -111,6 +130,13 @@ optional arguments:
     Default is the current working directory.
   - `-r USE_ROS`, `--use-ros USE_ROS`: Use a local microphone or an audio
     stream ROS from an Android mic (i.e., the robot). Default local mic.
+
+For the audio files to be streamed, for now, from the directory where your
+audio will be saved, you will need to run:
+
+`python -m SimpleHTTPServer`
+
+In the future, this functionality will be incorporated into the node itself.
 
 ### ROS messages
 
