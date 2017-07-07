@@ -236,8 +236,8 @@ class AudioEntrainer():
 
                     # Use a Praat script to morph the source audio
                     # to match what's coming over the mic.
-                    self.entrain_from_file_praat(target_file, source_file,
-                            out_file, out_dir, target_age)
+                    success = self.entrain_from_file_praat(target_file,
+                            source_file, out_file, out_dir, target_age)
                     break
             # Stop processing.
             except KeyboardInterrupt:
@@ -247,6 +247,7 @@ class AudioEntrainer():
         stream.stop_stream()
         stream.close()
         pyaud.terminate()
+        return success
 
 
     def entrain_from_file_praat(self, target_file, source_file, out_file,
@@ -269,14 +270,19 @@ class AudioEntrainer():
         #  - mean pitch (first to match the target's age, and then additionally
         #    within a specified range so it doesn't change too much)
         # and finally, save the adjusted source as a new wav.
-        subprocess.call([self.praat, "--run", self.script, source_file,
-            target_file, out_file, out_dir, str(ff_age)])
-        # TODO error handling? what if praat fails to execute?
+        try:
+            subprocess.call([self.praat, "--run", self.script, source_file,
+                target_file, out_file, out_dir, str(ff_age)])
+            return True
+        except Exception as e:
+            print e
+            print "Praat didn't work!"
+            return False
 
 
     def save_to_wav(self, data, filename):
         """ Save the given audio data to a wav file. """
-        print ("saving to wav: filename")
+        print ("saving to wav: " + filename)
         wav_file = wave.open(filename, 'wb')
         wav_file.setnchannels(self._n_channels)
         wav_file.setsampwidth(self.sample_size)
@@ -398,8 +404,8 @@ def on_entrain_audio_msg(data):
         # Give the source wav file (that was given to us) and the target wav
         # file (that we collected) to Praat for processing.
         out_file = data.audio.replace(".wav", "") + t + ".wav"
-        entrainer.entrain_from_file_praat("target-" + t + ".wav", data.audio,
-                out_file, args.out_dir, data.age)
+        success = entrainer.entrain_from_file_praat("target-" + t + ".wav",
+                data.audio, out_file, args.out_dir, data.age)
 
         # Adjust the viseme file times to match the morphed audio.
         visemes = entrainer.process_visemes(data.audio, out_file, args.out_dir,
@@ -410,10 +416,14 @@ def on_entrain_audio_msg(data):
         # TODO Use the speaking binary and interaction state to decide when
         # to collect audio from the local mic.
         out_file = "out" + t + ".wav"
-        entrainer.entrain_from_mic(data.audio, out_file, args.out_dir, data.age)
+        success = entrainer.entrain_from_mic(data.audio, out_file, args.out_dir,
+                data.age)
 
     # After audio is entrained, stream to the robot.
-    send_tega_action_message(server + out_file, visemes)
+    if success:
+        send_tega_action_message(server + out_file, visemes)
+    else:
+        send_tega_action_message(server + data.audio, visemes)
 
 
 def send_tega_action_message(audio_file, visemes):
