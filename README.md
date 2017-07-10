@@ -30,9 +30,10 @@ as speaking rate and pitch, and morph the source to match these features.
     - Because PyAudio uses numpy arrays for holding data
     - BSD-new license
 - scipy
-    - Needed for some parts of the demo only
+    - Used to read in wav files
     - Used in morphing audio in python, no Praat
     - BSD license
+    - You may need to sudo apt-get this because of lapack/blas.
 
 #### PYTHONPATH
 You will probably have to add python's default path to your shell config. For
@@ -170,6 +171,7 @@ This program was developed and tested with:
 - Praat 6.0.29
 - Mac OS X 10.10.5 (demo only)
 - Ubuntu 14.04 LTS 32-bit (demo and ROS node)
+- Ubuntu 14.04 LTS 64-bit (ROS node only)
 - ROS Indigo (ROS node only)
 
 ## Bugs and issues
