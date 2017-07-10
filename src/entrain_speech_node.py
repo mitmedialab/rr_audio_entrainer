@@ -28,6 +28,7 @@ import numpy
 import aubio # pitch detection (GNU/GPL license)
 from collections import deque # queue for incoming audio
 import os
+import os.path
 import subprocess
 import wave # For saving wav files
 import time # For adding timestamps to audio filenames.
@@ -273,7 +274,13 @@ class AudioEntrainer():
         try:
             subprocess.call([self.praat, "--run", self.script, source_file,
                 target_file, out_file, out_dir, str(ff_age)])
-            return True
+            # If Praat successfully returned, it may have successfully morphed
+            # the source audio file, but it may not have. Check that the file
+            # exists before actually calling this a success.
+            if os.path.isfile(out_dir + out_file):
+                return True
+            else:
+                return False
         except Exception as e:
             print e
             print "Praat didn't work!"
@@ -305,12 +312,18 @@ class AudioEntrainer():
         # Open the original audio file and the morphed file, get the durations,
         # and figure out how much to change the viseme file (if at all).
         print "Updating viseme file to match morphed audio..."
-        orig = wave.open(original_audio, 'r')
-        orig_length = orig.getnframes() / (float)(orig.getframerate())
-        morphed = wave.open(morphed_dir + "/" + morphed_audio, 'r')
-        morphed_length = morphed.getnframes() / (float)(morphed.getframerate())
-        diff = orig_length - morphed_length * 1000.0
-        print "Difference in lengths: " + str(diff)
+        diff = 0
+        try:
+            orig = wave.open(original_audio, 'r')
+            orig_length = orig.getnframes() / (float)(orig.getframerate())
+            morphed = wave.open(morphed_audio, 'r')
+            morphed_length = morphed.getnframes() / (float)(morphed.getframerate())
+            diff = orig_length - morphed_length * 1000.0
+            print "Difference in lengths: " + str(diff)
+        except Exception as e:
+            print e
+            print "Could not open audio file! " + original_audio
+
         # Read in the viseme file for processing.
         lines = []
         try:
@@ -321,10 +334,13 @@ class AudioEntrainer():
         except Exception as e:
             print "Could not read viseme file: " + viseme_file
             print e
+            return []
 
         # The viseme files have a header line, so subtract it from the total.
         # Change each viseme time by a small portion of the total difference.
-        change_by = diff / (len(lines) - 1)
+        change_by = 0
+        if len(lines) > 1:
+            change_by = diff / (len(lines) - 1)
         vs = []
         for line in lines:
             print line
