@@ -33,6 +33,7 @@ import subprocess
 import wave # For saving wav files
 import time # For adding timestamps to audio filenames.
 import struct
+import scipy.io.wavfile # For reading wav files for energy processing.
 # ROS and ROS msgs
 import rospy
 from r1d1_msgs.msg import AndroidAudio
@@ -355,6 +356,76 @@ class AudioEntrainer():
         return vs
 
 
+    def process_energy(self, audio_directory, audio_file):
+        """ Compute the energy timeseries for the entrained audio file so we can
+        send it to the robot. The robot uses this to bounce while speaking with
+        an amount of energy reflecting the energy of the audio.
+        """
+        # Read in wav file.
+        try:
+            rate, data = scipy.io.wavfile.read(audio_directory + audio_file)
+            if rate == 0 or not data.any():
+                return [], []
+        except Exception as e:
+            print e
+            return [], []
+        # Get data type max value.
+        max_value = numpy.iinfo(data.dtype).max
+        # Make data an array of floats.
+        data = data.astype(float)
+        # If there are multiple channels, average across them to make it mono.
+        if len(data.shape) > 1:
+            data = sum(axis=1) / data.shape[1]
+        # Convert to floats that are a percentage of the max possible value.
+        scaled_data = [ v / max_value for v in data]
+
+        # Divide into chunks: at 50Hz like r1d1_action audio energy processor
+        # (i.e., 0.02 seconds per chunk). Use sample rate from audio file to
+        # figure out how many samples per chunk.
+        samples_per_chunk = int(rate * 0.02)
+
+        # Split data into chunks.
+        chunked_data = numpy.array_split(scaled_data, samples_per_chunk)
+        # Get Hamming window for scaling energy values. Because numpy's
+        # array_split does not guarantee that each of the chunks will be exactly
+        # the same size (e.g., the last one might be shorter), we should create
+        # a window for each one with the right size. But since many chunks will
+        # be the same size, we can create a dictionary of Hamming windows of
+        # different sizes, so we don't have to make so many.
+        hamming = {}
+        # Based on the Hamming window, in r1d1_action a window correction is
+        # applied during the energy calculation. Again, we can compute it once
+        # for each size chunk and re-use them.
+        window_corrections = {}
+
+        # List of energy values and times.
+        energies = []
+        times = []
+
+        # The sample index is used to compute the time of each energy value.
+        sample_index = 0.0
+
+        # For each chunk:
+        for c in chunked_data:
+            # Apply a Hamming window for scaling the audio values.
+            # Then, get the energy value for this chunk: the sum of squares of
+            # the samples / number of samples * window correction.
+            if c.size not in hamming:
+                hamming[c.size] = numpy.hamming(c.size)
+                window_corrections[c.size] = c.size / sum(hamming[c.size])
+            energy = sum([v * v for v in (c * hamming[c.size])]) / (c.size *
+                    window_corrections[c.size])
+
+            # Save energy value and its time (sample index / samples per second).
+            energies.append(energy)
+            times.append(sample_index / rate)
+            # Increment the sample index.
+            sample_index += c.size
+
+        # Return the energies and times.
+        return energies, times
+
+
 def on_android_audio_msg(data):
     """ When we get an AndroidAudio message, collect the audio into an
     array for later processing.
@@ -427,6 +498,12 @@ def on_entrain_audio_msg(data):
         visemes = entrainer.process_visemes(data.audio, out_file, args.out_dir,
                 data.viseme_file)
 
+        # Get audio energy to send to the robot.
+        if success:
+            energies, times = entrainer.process_energy(args.out_dir, out_file)
+        else:
+            energies, times = entrainer.process_energy("", data.audio)
+
     else:
         # For now, collect some audio from the local mic and entrain to that.
         # TODO Use the speaking binary and interaction state to decide when
@@ -437,18 +514,20 @@ def on_entrain_audio_msg(data):
 
     # After audio is entrained, stream to the robot.
     if success:
-        send_tega_action_message(server + out_file, visemes)
+        send_tega_action_message(server + out_file, visemes, energies, times)
     else:
-        send_tega_action_message(server + data.audio, visemes)
+        send_tega_action_message(server + data.audio, visemes, energies, times)
 
 
-def send_tega_action_message(audio_file, visemes):
+def send_tega_action_message(audio_file, visemes, energies, times):
     """ Publish TegaAction message to playback audio. """
     print '\nsending speech message: %s' % audio_file
     msg = TegaAction()
     msg.do_sound_playback = True
     msg.wav_filename = audio_file
     msg.visemes = visemes
+    msg.energy_values = energies
+    msg.energy_times = times
     pub_tega_action.publish(msg)
     rospy.loginfo(msg)
 
