@@ -322,13 +322,13 @@ class AudioEntrainer():
             diff = orig_length - morphed_length * 1000.0
             print "Difference in lengths: " + str(diff)
         except Exception as e:
+            print "Could not open audio file!"
             print e
-            print "Could not open audio file! " + original_audio
 
         # Read in the viseme file for processing.
         lines = []
         try:
-            vfile = open(viseme_file)
+            vfile = open(morphed_dir + viseme_file) # TODO
             for line in vfile:
                 lines.append(line.strip().split(" "))
             vfile.close()
