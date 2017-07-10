@@ -375,7 +375,7 @@ class AudioEntrainer():
         data = data.astype(float)
         # If there are multiple channels, average across them to make it mono.
         if len(data.shape) > 1:
-            data = sum(axis=1) / data.shape[1]
+            data = data.sum(axis=1) / data.shape[1]
         # Convert to floats that are a percentage of the max possible value.
         scaled_data = [ v / max_value for v in data]
 
