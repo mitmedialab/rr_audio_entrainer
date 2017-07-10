@@ -516,7 +516,8 @@ def on_entrain_audio_msg(data):
     if success:
         send_tega_action_message(server + out_file, visemes, energies, times)
     else:
-        send_tega_action_message(server + data.audio, visemes, energies, times)
+        send_tega_action_message(server + (os.path.basename(data.audio)),
+                visemes, energies, times)
 
 
 def send_tega_action_message(audio_file, visemes, energies, times):
