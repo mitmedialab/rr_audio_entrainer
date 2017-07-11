@@ -127,17 +127,26 @@ optional arguments:
   - `-h`, `--help`: show this help message and exit
   - `-i IP_ADDR`, `--ipaddr IP_ADDR`: The IP address of the machine running
     this node. Used to serve audio files to the robot.
-  - `-d [OUT_DIR]`, `--outdir [OUT_DIR]`: Optional directory for saving audio.
-    Default is the current working directory.
+  - `-d [AUDIO_DIR]`, `--audiodir [AUDIO_DIR]`: Directory containing a
+    subfolder with the source audio ("source") and a directory for saving
+    output ("output").
   - `-r USE_ROS`, `--use-ros USE_ROS`: Use a local microphone or an audio
     stream ROS from an Android mic (i.e., the robot). Default local mic.
 
-For the audio files to be streamed, for now, from the directory where your
-audio will be saved, you will need to run:
+#### Audio file directories and the HTTP server
 
-`python -m SimpleHTTPServer`
+The audio files are streamed using a simple HTTP server. The audio entrainer
+will try to morph the provided audio file. If for some reason it fails, it will
+fall back to sending out the original source audio file. This means the server
+needs to have access to both directories -- one with the source files in it,
+and one with the output. One could set up nginx to serve files and have some
+nice configurable setup, but in liew of that, we're doing the following:
 
-In the future, this functionality will be incorporated into the node itself.
+1. Specify a directory that has two subdirectories:
+    - source
+    - output
+2. Start the server in that directory:
+    - `python -m SimpleHTTPServer`
 
 ### ROS messages
 

@@ -234,12 +234,13 @@ class AudioEntrainer():
                     # don't overwrite previous output files.
                     t = time.strftime("%Y-%m-%d.%H:%M:%S")
                     target_file = "target" + t + ".wav"
-                    self.save_to_wav(f, target_file)
+                    self.save_to_wav(f, full_audio_out_dir + target_file)
 
                     # Use a Praat script to morph the source audio
                     # to match what's coming over the mic.
-                    success = self.entrain_from_file_praat(target_file,
-                            source_file, out_file, out_dir, target_age)
+                    success = self.entrain_from_file_praat(full_audio_out_dir +
+                            target_file, source_file, out_file, out_dir,
+                            target_age)
                     break
             # Stop processing.
             except KeyboardInterrupt:
@@ -328,7 +329,7 @@ class AudioEntrainer():
         # Read in the viseme file for processing.
         lines = []
         try:
-            vfile = open(morphed_dir + viseme_file) # TODO
+            vfile = open(viseme_file) # TODO
             for line in vfile:
                 lines.append(line.strip().split(" "))
             vfile.close()
@@ -486,21 +487,24 @@ def on_entrain_audio_msg(data):
     t = time.strftime("%Y-%m-%d.%H:%M:%S")
     if args.use_ros:
         # Save audio collected so far to wav file.
-        entrainer.save_to_wav(audio_data, "target-" + t + ".wav")
+        entrainer.save_to_wav(audio_data, full_audio_out_dir + "target-" + t +
+                ".wav")
 
         # Give the source wav file (that was given to us) and the target wav
         # file (that we collected) to Praat for processing.
         out_file = data.audio.replace(".wav", "") + t + ".wav"
-        success = entrainer.entrain_from_file_praat("target-" + t + ".wav",
-                data.audio, out_file, args.out_dir, data.age)
+        success = entrainer.entrain_from_file_praat(full_audio_out_dir +
+                "target-" + t + ".wav", data.audio, out_file,
+                full_audio_out_dir, data.age)
 
         # Adjust the viseme file times to match the morphed audio.
-        visemes = entrainer.process_visemes(data.audio, out_file, args.out_dir,
-                data.viseme_file)
+        visemes = entrainer.process_visemes(data.audio, out_file,
+                full_audio_out_dir, data.viseme_file)
 
         # Get audio energy to send to the robot.
         if success:
-            energies, times = entrainer.process_energy(args.out_dir, out_file)
+            energies, times = entrainer.process_energy(
+                full_audio_out_dir, out_file)
         else:
             energies, times = entrainer.process_energy("", data.audio)
 
@@ -509,15 +513,16 @@ def on_entrain_audio_msg(data):
         # TODO Use the speaking binary and interaction state to decide when
         # to collect audio from the local mic.
         out_file = "out" + t + ".wav"
-        success = entrainer.entrain_from_mic(data.audio, out_file, args.out_dir,
-                data.age)
+        success = entrainer.entrain_from_mic(data.audio, out_file,
+                full_audio_out_dir, data.age)
 
     # After audio is entrained, stream to the robot.
     if success:
-        send_tega_action_message(server + out_file, visemes, energies, times)
+        send_tega_action_message(server + output_audio_dir + out_file, visemes,
+                energies, times)
     else:
-        send_tega_action_message(server + (os.path.basename(data.audio)),
-                visemes, energies, times)
+        send_tega_action_message(server + source_audio_dir +
+                (os.path.basename(data.audio)), visemes, energies, times)
 
 
 def send_tega_action_message(audio_file, visemes, energies, times):
@@ -530,7 +535,7 @@ def send_tega_action_message(audio_file, visemes, energies, times):
     msg.energy_values = energies
     msg.energy_times = times
     pub_tega_action.publish(msg)
-    rospy.loginfo(msg)
+    # rospy.loginfo(msg)
 
 
 if __name__ == '__main__':
@@ -545,13 +550,14 @@ if __name__ == '__main__':
             ''')
     # The user has to provide the IP address of the machine running this node.
     parser.add_argument("-i", "--ipaddr", type=str, nargs=1, action='store',
-            dest="ip_addr", default="192.168.1.48", help="The IP address of the"
+            dest="ip_addr", default="192.168.1.254", help="The IP address of the"
             + " machine running this node. Used to serve audio files to the "
             + "robot.")
     # The user provides an output directory where we can save audio files.
-    parser.add_argument("-d", "--outdir", type=str, nargs='?', action='store',
-            dest="out_dir", default="", help="Optional directory for saving "
-            "audio. Default is the current working directory.")
+    parser.add_argument("-d", "--audiodir", type=str, nargs=1, action='store',
+            dest="base_audio_dir", required=True, help="Directory containing " +
+            "subdirectory with the source audio (\"source\") and a directory " +
+            "for saving output (\"output\").")
     # The user can decide whether to get audio from ROS or a local microphone.
     parser.add_argument("-r", "--use-ros", action='store', dest="use_ros",
             default=True, help="Use a local microphone or an audio stream " +
@@ -561,12 +567,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    # If no output directory was provided, default to the current working
-    # directory.
-    if not args.out_dir:
-        args.out_dir = os.getcwd()
-
     # Set up defaults.
+    source_audio_dir = "source/"
+    output_audio_dir = "output/"
+    full_audio_out_dir = args.base_audio_dir[0] + output_audio_dir
     age = 5
     global is_participant_turn
     is_participant_turn = False
@@ -579,7 +583,7 @@ if __name__ == '__main__':
     # TODO this needs to be on its own thread, as it is blocking. For now, run
     # in a separate python shell.
     # Change directory to serve from the directory where we save audio output.
-    #os.chdir(args.out_dir)
+    #os.chdir(full_audio_out_dir)
     port = 8000
     #Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
     #httpd = SocketServer.TCPServer(("", port), Handler)
