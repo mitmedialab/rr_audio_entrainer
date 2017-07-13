@@ -69,12 +69,11 @@ endform
 printline Target file: 'target_file$'
 printline Source file: 'source_file$'
 printline Output file: 'output_file$'
-printline Output dir: 'output_file$'
+printline Output dir: 'output_dir$'
 
 # Pitch range to consider (children generally 200-400 Hz).
 floor = 100
 ceiling = 500
-
 
 # Read target file and detect features.
 if fileReadable(target_file$)
@@ -89,7 +88,7 @@ if fileReadable(target_file$)
     select 'target_sound_id'
     To Pitch... 0 floor ceiling
     target_mean_pitch = Get mean... 0 0 Hertz
-    printline Target mean pitch: 'target_mean_pitch'
+    printline Target mean pitch: 'target_mean_pitch:2'
 
 else
     printline Cannot read target file
@@ -110,7 +109,7 @@ if fileReadable(source_file$)
     select 'source_sound_id'
     To Pitch... 0 floor ceiling
     source_mean_pitch = Get mean... 0 0 Hertz
-    printline Source mean pitch: 'source_mean_pitch'
+    printline Source mean pitch: 'source_mean_pitch:2'
 else
     printline Cannot read source file
     exit
@@ -138,8 +137,8 @@ if dur_factor > 1.4
     printline Adjusted duration morph factor: 'dur_factor:2'
 endif
 # Speeds it up...
-if dur_factor < 0.7
-    dur_factor = 0.7
+if dur_factor < 0.6
+    dur_factor = 0.6
     printline Adjusted duration morph factor: 'dur_factor:2'
 endif
 
@@ -178,34 +177,30 @@ else
     adjust_pitch_by = source_mean_pitch - age_mean_pitch
 endif
 
+printline Age mean pitch: 'age_mean_pitch'
+printline Adjust pitch by: 'adjust_pitch_by:2'
+
 # Now adjust the pitch.
-# Get source start and end times.
-start_time = Get start time
-end_time = Get end time
-# Extract pitch tier and shift freqency.
-manipulation = To Manipulation... 0.01 floor ceiling
-pitch_tier = Extract pitch tier
-select pitch_tier
-Shift frequencies... start_time end_time adjust_pitch_by Hertz
-# Replace original pitch tier with shifted one.
-plus manipulation
-Replace pitch tier
-select manipulation
-result = Get resynthesis (overlap-add)
-select result
+if adjust_pitch_by <> 0
+    # Get source start and end times.
+    start_time = Get start time
+    end_time = Get end time
+    # Extract pitch tier and shift freqency.
+    manipulation = To Manipulation... 0.01 floor ceiling
+    pitch_tier = Extract pitch tier
+    select pitch_tier
+    Shift frequencies... start_time end_time adjust_pitch_by Hertz
+    # Replace original pitch tier with shifted one.
+    plus manipulation
+    Replace pitch tier
+    select manipulation
+    result = Get resynthesis (overlap-add)
+    select result
+endif
 
 # Save the adjusted sound to a new file.
 Write to WAV file... 'output_file$'
 Save as WAV file... 'output_file$'
-
-# Create a copy with date and time.
-date$ = date$()
-date$ = replace$(date$, ":", "-",0)
-where = index(output_file$,".wav")
-where = where - 1
-head$ = left$(output_file$, where) + "_tempo_" + date$ + ".wav"
-Write to WAV file... 'head$'
-
 
 # Remove any extra sounds and objects.
 printline Cleaning up...
