@@ -323,13 +323,13 @@ class AudioEntrainer():
             diff = orig_length - morphed_length * 1000.0
             print "Difference in lengths: " + str(diff)
         except Exception as e:
-            print "Could not open audio file!"
+            print "Couldn't open file to check length - maybe it doesn't exist?"
             print e
 
         # Read in the viseme file for processing.
         lines = []
         try:
-            vfile = open(viseme_file) # TODO
+            vfile = open(viseme_file)
             for line in vfile:
                 lines.append(line.strip().split(" "))
             vfile.close()
@@ -482,20 +482,26 @@ def on_entrain_audio_msg(data):
     """
     is_participant_turn = False
     visemes = []
+    success = False
     # Append the current date and time to our output files so we don't
     # overwrite previous output files.
     t = time.strftime("%Y-%m-%d.%H:%M:%S")
+    target = full_audio_out_dir + "target-" + t + ".wav"
     if args.use_ros:
-        # Save audio collected so far to wav file.
-        entrainer.save_to_wav(audio_data, full_audio_out_dir + "target-" + t +
-                ".wav")
+        # Create outfile name.
+        out_file = os.path.basename(data.audio.replace(".wav", "")) + t + ".wav"
 
-        # Give the source wav file (that was given to us) and the target wav
-        # file (that we collected) to Praat for processing.
-        out_file = data.audio.replace(".wav", "") + t + ".wav"
-        success = entrainer.entrain_from_file_praat(full_audio_out_dir +
-                "target-" + t + ".wav", data.audio, out_file,
-                full_audio_out_dir, data.age)
+        # If we have audio data to use as a target, save it and entrain to it.
+        if len(audio_data) > 0:
+            # Save audio collected so far to wav file.
+            entrainer.save_to_wav(audio_data, target)
+
+            # Give the source wav file (that was given to us) and the target wav
+            # file (that we collected) to Praat for processing.
+            success = entrainer.entrain_from_file_praat(target, data.audio,
+                    out_file, full_audio_out_dir, data.age)
+        else:
+            print "No audio data to entrain to... skipping entrainment."
 
         # Adjust the viseme file times to match the morphed audio.
         visemes = entrainer.process_visemes(data.audio, out_file,
