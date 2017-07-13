@@ -7,6 +7,10 @@
 # below) for speaking rate detection. Their script has been moved into a
 # procedure and minimally modified.
 #
+# Note that some of the Praat functions used in this script will only work
+# with mono-channeled audio and will return an error on stereo.
+# TODO Modify so Praat checks/converts to mono first.
+#
 ###########################################################################
 #                                                                         #
 #  Praat Script Syllable Nuclei                                           #
