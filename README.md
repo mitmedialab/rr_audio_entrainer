@@ -39,7 +39,7 @@ as speaking rate and pitch, and morph the source to match these features.
 You will probably have to add python's default path to your shell config. For
 Ubuntu 14.04, the line to add is:
 
-`export PYTHONPATH=$PYTHONPATH:/usr/lib/python2.7/dist-packages/'
+`export PYTHONPATH=$PYTHONPATH:/usr/lib/python2.7/dist-packages/`
 
 You have to add the default location to `PYTHONPATH` because initially,
 `PYTHONPATH` is not set, and thus python defaults to checking a default
@@ -51,7 +51,6 @@ In particular, if you have added the ROS setup shell config files to your shell
 config file (e.g., if you have a line like `source /opt/ros/indigo/setup.bash`
 in your .bashrc), you'll need to add this line.
 
-`
 
 ### Praat
 
