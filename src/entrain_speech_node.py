@@ -495,6 +495,8 @@ def on_entrain_audio_msg(data):
         if len(audio_data) > 0:
             # Save audio collected so far to wav file.
             entrainer.save_to_wav(audio_data, target)
+            # Reset audio data.
+            audio_data = deque([], maxlen=720)
 
             # Give the source wav file (that was given to us) and the target wav
             # file (that we collected) to Praat for processing.
