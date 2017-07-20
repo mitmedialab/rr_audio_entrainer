@@ -491,8 +491,9 @@ def on_entrain_audio_msg(data):
         # Create outfile name.
         out_file = os.path.basename(data.audio.replace(".wav", "")) + t + ".wav"
 
-        # If we have audio data to use as a target, save it and entrain to it.
-        if len(audio_data) > 0:
+        # If we have audio data to use as a target, and we are supposed to
+        # entrain to it, then we should save it and entrain to it.
+        if len(audio_data) > 0 and data.entrain:
             # Save audio collected so far to wav file.
             entrainer.save_to_wav(audio_data, target)
             # Reset audio data.
@@ -503,8 +504,11 @@ def on_entrain_audio_msg(data):
             # file (that we collected) to Praat for processing.
             success = entrainer.entrain_from_file_praat(target, data.audio,
                     out_file, full_audio_out_dir, data.age)
+        elif not data.entrain:
+            print "We were told not to entrain. Skipping entrainment."
         else:
-            print "No audio data to entrain to... skipping entrainment."
+            print "We were supposed to entrain, but we had no audio data to " +\
+                    "entrain to... skipping entrainment."
 
         # Adjust the viseme file times to match the morphed audio.
         visemes = entrainer.process_visemes(data.audio, out_file,
