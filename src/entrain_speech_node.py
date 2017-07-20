@@ -496,6 +496,7 @@ def on_entrain_audio_msg(data):
             # Save audio collected so far to wav file.
             entrainer.save_to_wav(audio_data, target)
             # Reset audio data.
+            global audio_data
             audio_data = deque([], maxlen=720)
 
             # Give the source wav file (that was given to us) and the target wav
