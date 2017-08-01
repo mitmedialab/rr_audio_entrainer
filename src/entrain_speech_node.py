@@ -542,7 +542,6 @@ def send_tega_action_message(audio_file, visemes, energies, times):
     """ Publish TegaAction message to playback audio. """
     print '\nsending speech message: %s' % audio_file
     msg = TegaAction()
-    msg.do_sound_playback = True
     msg.wav_filename = audio_file
     msg.visemes = visemes
     msg.energy_values = energies

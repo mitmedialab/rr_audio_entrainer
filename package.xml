@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>rr_audio_entrainer</name>
-  <version>1.2.0</version>
+  <version>1.2.1</version>
   <description>Entrain audio files to match target audio</description>
 
   <maintainer email="jakory@media.mit.edu">jakory</maintainer>
