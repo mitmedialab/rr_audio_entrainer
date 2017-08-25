@@ -90,8 +90,6 @@ if fileReadable(target_file$)
     select 'target_sound_id'
     To Pitch... 0 floor ceiling
     target_mean_pitch = Get mean... 0 0 Hertz
-    printline Target mean pitch: 'target_mean_pitch:2'
-
 else
     printline Cannot read target file
     exit
@@ -111,7 +109,6 @@ if fileReadable(source_file$)
     select 'source_sound_id'
     To Pitch... 0 floor ceiling
     source_mean_pitch = Get mean... 0 0 Hertz
-    printline Source mean pitch: 'source_mean_pitch:2'
 else
     printline Cannot read source file
     exit
@@ -154,9 +151,6 @@ result_duration = Get total duration
 printline Morphed duration: 'result_duration:2'
 select result
 
-# Adjust the pitch of the source to match the mean fundamental frequency of
-# speakers of the target's age.
-#
 # Adjust the pitch of the source file a little up or down to be closer to the
 # pitch of the target. Won't shift the pitch entirely or replace the pitch
 # contour because the source has a lot of pitch variation and is in a particular
@@ -168,18 +162,21 @@ select result
 # mean pitch is lower than the source's mean pitch by some threshold amount,
 # shift the source down a little.
 
+# TODO age removed for now -- do we want to do something with it?
 #TODO range?
 if target_mean_pitch = undefined
     adjust_pitch_by = 0
-else if target_mean_pitch > age_mean_pitch + 30
-    adjust_pitch_by = source_mean_pitch - age_mean_pitch + 30
-else if target_mean_pitch < age_mean_pitch - 30
-    adjust_pitch_by = source_mean_pitch - age_mean_pitch - 30
+elsif ('target_mean_pitch' > ('source_mean_pitch' + 30))
+    adjust_pitch_by = 30
+elsif ('target_mean_pitch' < ('source_mean_pitch' - 30))
+    adjust_pitch_by = -30
 else
-    adjust_pitch_by = source_mean_pitch - age_mean_pitch
+    adjust_pitch_by = 'target_mean_pitch' - 'source_mean_pitch'
 endif
 
 printline Age mean pitch: 'age_mean_pitch'
+printline Source mean pitch: 'source_mean_pitch:2'
+printline Target mean pitch: 'target_mean_pitch:2'
 printline Adjust pitch by: 'adjust_pitch_by:2'
 
 # Now adjust the pitch.
