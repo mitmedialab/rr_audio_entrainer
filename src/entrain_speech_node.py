@@ -275,7 +275,7 @@ class AudioEntrainer():
         # and finally, save the adjusted source as a new wav.
         try:
             subprocess.call([self.praat, "--run", self.script, source_file,
-                target_file, out_file, out_dir, str(ff_age)])
+                target_file, out_dir + out_file, str(ff_age)])
             # If Praat successfully returned, it may have successfully morphed
             # the source audio file, but it may not have. Check that the file
             # exists before actually calling this a success.

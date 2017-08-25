@@ -65,7 +65,6 @@ form Counting Syllables in Sound Utterances
     sentence source_file sample.wav
     sentence target_file sample2.wav
     sentence output_file sample-morphed.wav
-    sentence output_dir /directory
     real age_mean_pitch 290
 endform
 
@@ -73,7 +72,6 @@ endform
 printline Target file: 'target_file$'
 printline Source file: 'source_file$'
 printline Output file: 'output_file$'
-printline Output dir: 'output_dir$'
 
 # Pitch range to consider (children generally 200-400 Hz).
 floor = 100
@@ -189,7 +187,7 @@ if adjust_pitch_by <> 0
     # Get source start and end times.
     start_time = Get start time
     end_time = Get end time
-    # Extract pitch tier and shift freqency.
+    # Extract pitch tier and shift frequency.
     manipulation = To Manipulation... 0.01 floor ceiling
     pitch_tier = Extract pitch tier
     select pitch_tier
