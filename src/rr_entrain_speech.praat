@@ -131,13 +131,13 @@ printline Duration morph factor: 'dur_factor:2'
 # Cap the amount the source file can be sped up or slowed down to reasonable
 # values, since if it's too fast or slow it'll sound weird.
 # Slows it down...
-if dur_factor > 1.4
-    dur_factor = 1.4
+if dur_factor > 1.3
+    dur_factor = 1.3
     printline Adjusted duration morph factor: 'dur_factor:2'
 endif
 # Speeds it up...
-if dur_factor < 0.6
-    dur_factor = 0.6
+if dur_factor < 0.7
+    dur_factor = 0.7
     printline Adjusted duration morph factor: 'dur_factor:2'
 endif
 
