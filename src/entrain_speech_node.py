@@ -321,8 +321,9 @@ class AudioEntrainer():
             morphed = wave.open(morphed_dir + morphed_audio, 'r')
             morphed_length = morphed.getnframes() / \
                     (float)(morphed.getframerate())
-            diff = (orig_length - morphed_length) * 1000.0
-            print "Difference in lengths: " + str(diff)
+            diff = (morphed_length - orig_length) * 1000.0
+            print "Source: {}, morphed: {}, diff: {}".format(orig_length,
+                    morphed_length, diff)
         except Exception as e:
             print "Couldn't open file to check length - maybe it doesn't exist?"
             print e
@@ -344,6 +345,7 @@ class AudioEntrainer():
         change_by = 0
         if len(lines) > 1:
             change_by = diff / (len(lines) - 1)
+            print "Change viseme lines by {}".format(change_by)
         vs = []
         for line in lines:
             print line
