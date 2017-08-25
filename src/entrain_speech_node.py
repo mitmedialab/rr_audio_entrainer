@@ -483,6 +483,7 @@ def on_entrain_audio_msg(data):
     recently collected and the given age to morph the given audio file, and
     send that audio file to the robot.
     """
+    global is_participant_turn
     is_participant_turn = False
     visemes = []
     success = False
@@ -642,7 +643,7 @@ if __name__ == '__main__':
     if args.use_ros:
         # If we are not using the local microphone, we are using ROS...
         # Speaking binary, from the backchanneling module.
-        sub_sb = rospy.Subscriber('msg_sb/raw', Int32, on_speaking_binary_msg)
+        #sub_sb = rospy.Subscriber('msg_sb/raw', Int32, on_speaking_binary_msg)
         # Use r1d1_msgs/AndroidAudio to get incoming audio stream from the
         # robot's microphone or a standalone android microphone app.
         sub_audio = rospy.Subscriber('android_audio', AndroidAudio,
