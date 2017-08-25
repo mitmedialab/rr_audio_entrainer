@@ -41,8 +41,8 @@ from r1d1_msgs.msg import TegaAction
 from r1d1_msgs.msg import Viseme
 from rr_msgs.msg import EntrainAudio
 from rr_msgs.msg import InteractionState
-from std_msgs.msg import String
 from std_msgs.msg import Int32
+from std_msgs.msg import String
 # For streaming audio to the robot.
 import SimpleHTTPServer
 import SocketServer
@@ -318,9 +318,10 @@ class AudioEntrainer():
         try:
             orig = wave.open(original_audio, 'r')
             orig_length = orig.getnframes() / (float)(orig.getframerate())
-            morphed = wave.open(morphed_audio, 'r')
-            morphed_length = morphed.getnframes() / (float)(morphed.getframerate())
-            diff = orig_length - morphed_length * 1000.0
+            morphed = wave.open(morphed_dir + morphed_audio, 'r')
+            morphed_length = morphed.getnframes() / \
+                    (float)(morphed.getframerate())
+            diff = (orig_length - morphed_length) * 1000.0
             print "Difference in lengths: " + str(diff)
         except Exception as e:
             print "Couldn't open file to check length - maybe it doesn't exist?"
@@ -438,12 +439,12 @@ def on_android_audio_msg(data):
     if is_participant_turn and data.is_streaming and is_speaking > 4:
         global audio_data
         audio_data.append(data.samples)
-    global samplerate
-    samplerate = data.sample_rate
-    global n_channels
-    n_channels = data.nchannels
-    global sample_size
-    sample_size = data.sample_width
+        global samplerate
+        samplerate = data.sample_rate
+        global n_channels
+        n_channels = data.nchannels
+        global sample_size
+        sample_size = data.sample_width
 
 
 def on_speaking_binary_msg(data):
