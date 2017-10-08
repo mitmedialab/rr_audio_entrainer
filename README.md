@@ -36,10 +36,10 @@ as speaking rate and pitch, and morph the source to match these features.
     - You may need to sudo apt-get this because of lapack/blas.
 
 #### PYTHONPATH
-You will probably have to add python's default path to your shell config. For
-Ubuntu 14.04, the line to add is:
 
-`export PYTHONPATH=$PYTHONPATH:/usr/lib/python2.7/dist-packages/`
+You will probably have to add python's default path to tell python where to
+look for some libraries (in particular, scipy if you have installed it globally
+instead of with pip).
 
 You have to add the default location to `PYTHONPATH` because initially,
 `PYTHONPATH` is not set, and thus python defaults to checking a default
@@ -50,6 +50,23 @@ location...  So we have to add the default back into the path.
 In particular, if you have added the ROS setup shell config files to your shell
 config file (e.g., if you have a line like `source /opt/ros/indigo/setup.bash`
 in your .bashrc), you'll need to add this line.
+
+You could add this to your shell config (but note that if you are using other
+virtual environments or pipenv this may mess with their settings). If you want
+to do that, for Ubuntu 14.04, the line to add is:
+
+`export PYTHONPATH=$PYTHONPATH:/usr/lib/python2.7/dist-packages/`
+
+**Recommended**: Create a file called "pythonpath.pth" with the relevant python
+path in it:
+
+```
+/usr/lib/python2.7/dist-packages/
+```
+
+Put this file in `your_venv/lib/python2.7/site-packages`. Then the virtual
+environment will check this path for libraries and you won't mess up any other
+virtual environments or python stuff you have elsewhere.
 
 
 ### Praat
