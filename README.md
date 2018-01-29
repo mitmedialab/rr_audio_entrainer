@@ -150,6 +150,13 @@ optional arguments:
   - `-r`, `--use-ros`: Use a local microphone or an audio stream ROS from an
     Android mic (i.e., the robot). Default local mic.
 
+#### Run with reasonable default settings
+
+You may run the script `run_entrainer.sh` to start the entrainer with the ip
+address set to `$ROS_IP`, a particular audio directory, and audio over ros. You
+may need to modify the filepaths in that script to point to wherever you
+checked out this repository.
+
 #### Audio file directories and the HTTP server
 
 The audio files are streamed using a simple HTTP server. The audio entrainer
