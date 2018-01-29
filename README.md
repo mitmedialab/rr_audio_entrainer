@@ -71,11 +71,12 @@ virtual environments or python stuff you have elsewhere.
 
 ### Praat
 
-To morph audio using Praat, you must have [Praat](http://www.praat.org) installed. The
-version you can install from ports on linux is old and the Praat script may not
-run correctly, so I recommend installing the binary from the website. Then, add
-the path to the Praat executable to your `PATH`. For example, if you've put
-Praat in the directory `/home/myusername/bin`, you would run:
+To morph audio using Praat, you must have [Praat](http://www.praat.org)
+installed. The version you can install from ports on linux is old and the Praat
+script may not run correctly, so I recommend installing the binary from the
+website. Then, add the path to the Praat executable to your `PATH`. For
+example, if you've put Praat in the directory `/home/myusername/bin`, you would
+run:
 
 `export PATH=/home/myusername/bin:$PATH`
 
@@ -131,7 +132,7 @@ If you are using Ubuntu 14.04, make sure to source the `libpath_for_praat.sh`
 script.
 
 ### Usage
-`entrain_speech_node.py [-h] [-i IP_ADDR] [-d [OUT_DIR]] [-r USE_ROS]`
+`entrain_speech_node.py [-h] [-i IP_ADDR] [-d [AUDIO_DIR]] [-r]`
 
 Given an audio stream over ROS, detect various audio features. Morph an audio
 file (specified via a ROS msg) to match those features. Only use audio
@@ -146,8 +147,8 @@ optional arguments:
   - `-d [AUDIO_DIR]`, `--audiodir [AUDIO_DIR]`: Directory containing a
     subfolder with the source audio ("source") and a directory for saving
     output ("output").
-  - `-r USE_ROS`, `--use-ros USE_ROS`: Use a local microphone or an audio
-    stream ROS from an Android mic (i.e., the robot). Default local mic.
+  - `-r`, `--use-ros`: Use a local microphone or an audio stream ROS from an
+    Android mic (i.e., the robot). Default local mic.
 
 #### Audio file directories and the HTTP server
 

@@ -586,7 +586,7 @@ if __name__ == '__main__':
                         source audio (\"source\") and a directory for saving
                         output (\"output\").""")
     # The user can decide whether to get audio from ROS or a local microphone.
-    PARSER.add_argument("-r", "--use-ros", action='store', dest="use_ros",
+    PARSER.add_argument("-r", "--use-ros", action='store_true', dest="use_ros",
                         default=True,
                         help="""Use a local microphone or an audio stream ROS
                         from an Android mic (i.e., the robot). Default ROS.""")
