@@ -4,7 +4,7 @@
 
 set -e
 
-cd "$HOME/projects/ros_catkin_ws/src/rr_audio_entrainer/"
+cd "$(rospack find rr_audio_entrainer)"
 . env/bin/activate
 . ./libpath_for_praat.sh
 cd src/
