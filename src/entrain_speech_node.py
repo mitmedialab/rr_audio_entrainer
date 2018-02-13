@@ -142,7 +142,7 @@ class AudioEntrainer(object):
         section of audio that is probably speech to a wav file and use that as
         the target when processing with Praat.
         """
-        #pylint: disable=too-many-locals
+        # pylint: disable=too-many-locals
         # Initialize pyaudio.
         pyaud = pyaudio.PyAudio()
 
@@ -214,7 +214,7 @@ class AudioEntrainer(object):
                     running_total_silence += 1
                     # If we've had a lot of silence in a row, or non-speech
                     # sound, there's probably a pause or no speech.
-                     # TODO Pick good values for these:
+                    # TODO Pick good values for these:
                     if running_total_silence > 6 and running_total_speech < 20:
                         print "\tsilence"
                         running_total_speech = 0
@@ -223,7 +223,7 @@ class AudioEntrainer(object):
                         incoming_pitches.append(pitch)
 
                 # Save running stream of raw audio.
-                #TODO see if we can get deque to work
+                # TODO see if we can get deque to work
                 if running_total_speech > 4:
                     frames.append(audiobuffer)
                     fra.append(audiobuffer)

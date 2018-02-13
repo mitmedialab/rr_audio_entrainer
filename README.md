@@ -143,7 +143,8 @@ Also save the morphed file to the specified output directory.
 optional arguments:
   - `-h`, `--help`: show this help message and exit
   - `-i IP_ADDR`, `--ipaddr IP_ADDR`: The IP address of the machine running
-    this node. Used to serve audio files to the robot.
+    this node. Used to serve audio files to the robot. You may pass in
+    `$ROS_IP`.
   - `-d [AUDIO_DIR]`, `--audiodir [AUDIO_DIR]`: Directory containing a
     subfolder with the source audio ("source") and a directory for saving
     output ("output").
@@ -153,7 +154,7 @@ optional arguments:
 #### Run with reasonable default settings
 
 You may run the script `run_entrainer.sh` to start the entrainer with the ip
-address set to `$ROS_IP`, a particular audio directory, and audio over ros. You
+address set to `$ROS_IP`, a particular audio directory, and audio over ROS. You
 may need to modify the filepaths in that script to point to wherever you
 checked out this repository.
 
@@ -178,12 +179,6 @@ nice configurable setup, but in liew of that, we're doing the following:
 
 The node subscribes to "/[r1d1\_msgs](https://github.com/mitmedialab/r1d1_msgs
 "/r1d1_msgs")/AndroidAudio" on the ROS topic "/android_audio".
-
-#### Speaking binary
-
-The node subscribes to Int32 messages from the [speaking binary
-classifier](https://github.com/mitmedialab/Moody_BackChanneling) on the ROS
-topic "/msg_sb/raw".
 
 #### Relational robot messages
 
