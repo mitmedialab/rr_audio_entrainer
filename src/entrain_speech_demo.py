@@ -232,8 +232,9 @@ class EntrainAudio():
                         # Use a Praat script to morph the source audio
                         # to match what's coming over the mic.
                         # TODO
-                        self._entrain_from_file_praat(target_file, source_file,
-                                out_file, out_dir, target_age)
+                        success, data = self._entrain_from_file_praat(
+                                target_file, source_file, out_file, out_dir,
+                                target_age)
 
                     # Or don't use Praat. Does not do as much, but is all
                     # in python.
@@ -262,8 +263,8 @@ class EntrainAudio():
         processing.
         """
         if use_praat:
-            self._entrain_from_file_praat(target_file, source_file, out_file,
-                    out_dir, target_age)
+            success, data = self._entrain_from_file_praat(target_file,
+                    source_file, out_file, out_dir, target_age)
         else:
             print("TODO: Process the target file and morph the source in python.")
             # TODO: Morph source audio file and write to new file.
@@ -292,12 +293,81 @@ class EntrainAudio():
         #  - mean pitch (first to match the target's age, and then additionally
         #    within a specified range so it doesn't change too much)
         # and finally, save the adjusted source as a new wav.
-        subprocess.call([self.praat, "--run", self.script, source_file,
-            target_file, out_file, out_dir, str(ff_age)])
+        #subprocess.call([self.praat, "--run", self.script, source_file,
+            #target_file, out_file, out_dir, str(ff_age)])
+        try:
+            proc = subprocess.Popen(
+                [self.praat,
+                    "--run",
+                    self.script,
+                    source_file,
+                    target_file,
+                    out_dir + out_file,
+                    str(ff_age)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+            # Get the output from Praat so we can record the data regarding the
+            # speaking rate, pitch, etc.
+            stdout, stderr = proc.communicate()
+            print stdout
+            print stderr
+            data = self.parse_praat_output(stdout + stderr)
 
-        # TODO error handling? what if praat fails to execute?
+            # If Praat successfully returned, it may have successfully morphed
+            # the source audio file, but it may not have. Check that the file
+            # exists before actually calling this a success.
+            if os.path.isfile(out_dir + out_file):
+                return True, data
+            else:
+                return False, data
+        except Exception as ex:
+            print ex
+            print "Praat didn't work!"
+            return False, None
 
-
+    def parse_praat_output(self, output):
+        """ Parse the output that was printed by Praat to stdout and stderr in
+        order to get relevant data about the source file and the target it was
+        entrained to.
+        """
+        data = {}
+        output_lines = output.split("\n")
+        for line in output_lines:
+            # Relevant data output lines are tagged with "**".
+            if "**Target file:" in line:
+                data["target_file"] = line.split(": ")[1]
+            elif "**Source file:" in line:
+                data["source_file"] = line.split(": ")[1]
+            elif "**Output file:" in line:
+                data["output_file"] = line.split(": ")[1]
+            elif "**" in line:
+                try:
+                    value = float(line.split(": ")[1])
+                    if "**Target mean intensity: " in line:
+                        data["target_mean_intensity"] = value
+                    if "**Source mean intensity: " in line:
+                        data["source_mean_intensity"] = value
+                    if "**Target speaking rate: " in line:
+                        data["target_speech_rate"] = value
+                    if "**Source speaking rate: " in line:
+                        data["source_speech_rate"] = value
+                    if "**Source original duration: " in line:
+                        data["source_dur"] = value
+                    if "**Duration morph factor: " in line:
+                        data["dur_factor"] = value
+                    if "**Adjusted duration morph factor: " in line:
+                        data["adjusted_dur_factor"] = value
+                    if "**Morphed duration: " in line:
+                        data["morphed_duration"] = value
+                    if "**Source mean pitch: " in line:
+                        data["source_mean_pitch"] = value
+                    if "**Target mean pitch: " in line:
+                        data["target_mean_pitch"] = value
+                    if "**Adjust pitch by: " in line:
+                        data["adjust_pitch_by"] = value
+                except ValueError as valerr:
+                    print "Could not get value! {}".format(valerr)
+        return data
 
     def detect_tempo(self):
         """ Given a numpy array of amplitude samples, detect the tempo of the

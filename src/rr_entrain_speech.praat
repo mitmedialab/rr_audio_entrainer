@@ -57,10 +57,10 @@
 # + bug fixed concerning summing total pause, feb 28th 2011
 ###########################################################################
 
-# The inputs are two wav files, the source and the target, one output file name,
-# and an output directory.
-# The source file will be morphed to match the target. The morphed sound will be
-# saved to the output file name in the output directory.
+# The inputs are two wav files, the source and the target, one output file
+# name, and an output directory. The source file will be morphed to match the
+# target. The morphed sound will be saved to the output file name in the output
+# directory.
 form Counting Syllables in Sound Utterances
     sentence source_file sample.wav
     sentence target_file sample2.wav
@@ -69,9 +69,9 @@ form Counting Syllables in Sound Utterances
 endform
 
 # Got files:
-printline Target file: 'target_file$'
-printline Source file: 'source_file$'
-printline Output file: 'output_file$'
+printline **Target file: 'target_file$'
+printline **Source file: 'source_file$'
+printline **Output file: 'output_file$'
 
 # Pitch range to consider (children generally 200-400 Hz).
 floor = 100
@@ -90,6 +90,12 @@ if fileReadable(target_file$)
     select 'target_sound_id'
     To Pitch... 0 floor ceiling
     target_mean_pitch = Get mean... 0 0 Hertz
+
+    # Get mean intensity of target.
+    select 'target_sound_id'
+    To Intensity... floor 0
+    target_mean_intensity = Get mean... 0 0 energy
+
 else
     printline Cannot read target file
     exit
@@ -109,10 +115,20 @@ if fileReadable(source_file$)
     select 'source_sound_id'
     To Pitch... 0 floor ceiling
     source_mean_pitch = Get mean... 0 0 Hertz
+
+    # Get mean intensity of source.
+    select 'source_sound_id'
+    To Intensity... floor 0
+    source_mean_intensity = Get mean... 0 0 energy
 else
     printline Cannot read source file
     exit
 endif
+
+# We do not adjust based on the intensity, but we report it so it can be used
+# elsewhere if needed.
+printline **Target mean intensity: 'target_mean_intensity:2'
+printline **Source mean intensity: 'source_mean_intensity:2'
 
 # Given the target speech rate, morph source file to match.
 # Get the factor by which to adjust (i.e., speed up or slow down) the source.
@@ -123,22 +139,22 @@ else
     dur_factor = 1
 endif
 
-printline Target rate: 'target_speech_rate:2'
-printline Source rate: 'source_speech_rate:2'
-printline Source original duration: 'source_dur:2'
-printline Duration morph factor: 'dur_factor:2'
+printline **Target speaking rate: 'target_speech_rate:2'
+printline **Source speaking rate: 'source_speech_rate:2'
+printline **Source original duration: 'source_dur:2'
+printline **Duration morph factor: 'dur_factor:2'
 
 # Cap the amount the source file can be sped up or slowed down to reasonable
 # values, since if it's too fast or slow it'll sound weird.
 # Slows it down...
 if dur_factor > 1.3
     dur_factor = 1.3
-    printline Adjusted duration morph factor: 'dur_factor:2'
+    printline **Adjusted duration morph factor: 'dur_factor:2'
 endif
 # Speeds it up...
 if dur_factor < 0.7
     dur_factor = 0.7
-    printline Adjusted duration morph factor: 'dur_factor:2'
+    printline **Adjusted duration morph factor: 'dur_factor:2'
 endif
 
 # Select the source sound.
@@ -148,19 +164,19 @@ select 'source_sound_id'
 result = Lengthen (overlap-add)... 100 600 'dur_factor'
 # Check the new duration to see that it's changed appropriately.
 result_duration = Get total duration
-printline Morphed duration: 'result_duration:2'
+printline **Morphed duration: 'result_duration:2'
 select result
 
 # Adjust the pitch of the source file a little up or down to be closer to the
 # pitch of the target. Won't shift the pitch entirely or replace the pitch
-# contour because the source has a lot of pitch variation and is in a particular
-# range, so changing these would change the source too much and may make it
-# sound pretty weird (e.g. emphasis on wrong syllables).
+# contour because the source has a lot of pitch variation and is in a
+# particular range, so changing these would change the source too much and may
+# make it sound pretty weird (e.g. emphasis on wrong syllables).
 #
-# If the mean pitch of the target is higher than the source's mean pitch by some
-# threshold amount, shift the source up a little. Otherwise, if the the target's
-# mean pitch is lower than the source's mean pitch by some threshold amount,
-# shift the source down a little.
+# If the mean pitch of the target is higher than the source's mean pitch by
+# some threshold amount, shift the source up a little. Otherwise, if the the
+# target's mean pitch is lower than the source's mean pitch by some threshold
+# amount, shift the source down a little.
 
 # TODO age removed for now -- do we want to do something with it?
 #TODO range?
@@ -174,10 +190,10 @@ else
     adjust_pitch_by = 'target_mean_pitch' - 'source_mean_pitch'
 endif
 
-printline Age mean pitch: 'age_mean_pitch'
-printline Source mean pitch: 'source_mean_pitch:2'
-printline Target mean pitch: 'target_mean_pitch:2'
-printline Adjust pitch by: 'adjust_pitch_by:2'
+printline **Age mean pitch: 'age_mean_pitch'
+printline **Source mean pitch: 'source_mean_pitch:2'
+printline **Target mean pitch: 'target_mean_pitch:2'
+printline **Adjust pitch by: 'adjust_pitch_by:2'
 
 # Now adjust the pitch.
 if adjust_pitch_by <> 0

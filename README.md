@@ -180,16 +180,27 @@ nice configurable setup, but in liew of that, we're doing the following:
 The node subscribes to "/[r1d1\_msgs](https://github.com/mitmedialab/r1d1_msgs
 "/r1d1_msgs")/AndroidAudio" on the ROS topic "/android_audio".
 
+The node publishes "/[r1d1\_msgs](https://github.com/mitmedialab/r1d1_msgs
+"/r1d1_msgs")/TegaAction" on the ROS topic "/tega".
+
 #### Relational robot messages
 
 The node subscribes to
 "/[rr_msgs](https://github.com/mitmedialab/rr_msgs)/EntrainAudio" messages on
 the ROS topic "/rr/entrain_audio".
 
-The node also subscribes to
+The node subscribes to
 "/[rr_msgs](https://github.com/mitmedialab/rr_msgs)/InteractionState" messages
 on the ROS topic "/rr/state".
 
+The node publishes
+"/[rr_msgs](https://github.com/mitmedialab/rr_msgs)/EntrainmentData" messages
+on the ROS topic "/rr/entrainment_data".
+
+#### Other messages
+
+The node publishes "/std_msgs/String messages on the ROS topic
+"/rr/audio_entrainer".
 
 ## Version notes
 

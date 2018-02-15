@@ -42,6 +42,8 @@ from r1d1_msgs.msg import TegaAction
 from r1d1_msgs.msg import Viseme
 from rr_msgs.msg import EntrainAudio
 from rr_msgs.msg import InteractionState
+from rr_msgs.msg import EntrainmentData
+from std_msgs.msg import Header  # Standard ROS msg header.
 from std_msgs.msg import String
 # TODO For streaming audio to the robot.
 #import SimpleHTTPServer
@@ -240,7 +242,7 @@ class AudioEntrainer(object):
 
                     # Use a Praat script to morph the source audio
                     # to match what's coming over the mic.
-                    success = self.entrain_from_file_praat(
+                    success, data = self.entrain_from_file_praat(
                         FULL_AUDIO_OUT_DIR + target_file,
                         source_file,
                         out_file,
@@ -255,7 +257,7 @@ class AudioEntrainer(object):
         stream.stop_stream()
         stream.close()
         pyaud.terminate()
-        return success
+        return success, data
 
     # pylint: disable=too-many-arguments
     def entrain_from_file_praat(self, target_file, source_file, out_file,
@@ -279,25 +281,77 @@ class AudioEntrainer(object):
         #    within a specified range so it doesn't change too much)
         # and finally, save the adjusted source as a new wav.
         try:
-            subprocess.call(
+            proc = subprocess.Popen(
                 [self.praat,
                     "--run",
                     self.script,
                     source_file,
                     target_file,
                     out_dir + out_file,
-                    str(ff_age)])
+                    str(ff_age)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+            # Get the output from Praat so we can record the data regarding the
+            # speaking rate, pitch, etc.
+            stdout, stderr = proc.communicate()
+            data = self.parse_praat_output(stdout + stderr)
+
             # If Praat successfully returned, it may have successfully morphed
             # the source audio file, but it may not have. Check that the file
             # exists before actually calling this a success.
             if os.path.isfile(out_dir + out_file):
-                return True
+                return True, data
             else:
-                return False
+                return False, data
         except Exception as ex:
             print ex
             print "Praat didn't work!"
-            return False
+            return False, None
+
+    def parse_praat_output(self, output):
+        """ Parse the output that was printed by Praat to stdout and stderr in
+        order to get relevant data about the source file and the target it was
+        entrained to.
+        """
+        print "Parsing Praat output..."
+        data = {}
+        output_lines = output.split("\n")
+        for line in output_lines:
+            # Relevant data output lines are tagged with "**".
+            if "**Target file:" in line:
+                data["target_file"] = line.split(": ")[1]
+            elif "**Source file:" in line:
+                data["source_file"] = line.split(": ")[1]
+            elif "**Output file:" in line:
+                data["output_file"] = line.split(": ")[1]
+            elif "**" in line:
+                try:
+                    value = float(line.split(": ")[1])
+                    if "**Target mean intensity: " in line:
+                        data["target_mean_intensity"] = value
+                    if "**Source mean intensity: " in line:
+                        data["source_mean_intensity"] = value
+                    if "**Target speaking rate: " in line:
+                        data["target_speech_rate"] = value
+                    if "**Source speaking rate: " in line:
+                        data["source_speech_rate"] = value
+                    if "**Source original duration: " in line:
+                        data["source_dur"] = value
+                    if "**Duration morph factor: " in line:
+                        data["dur_factor"] = value
+                    if "**Adjusted duration morph factor: " in line:
+                        data["adjusted_dur_factor"] = value
+                    if "**Morphed duration: " in line:
+                        data["morphed_duration"] = value
+                    if "**Source mean pitch: " in line:
+                        data["source_mean_pitch"] = value
+                    if "**Target mean pitch: " in line:
+                        data["target_mean_pitch"] = value
+                    if "**Adjust pitch by: " in line:
+                        data["adjust_pitch_by"] = value
+                except ValueError as valerr:
+                    print "Could not get value! {}".format(valerr)
+        return data
 
     def save_to_wav(self, data, filename):
         """ Save the given audio data to a wav file. """
@@ -497,8 +551,10 @@ def on_entrain_audio_msg(data):
             AUDIO_DATA = deque([], maxlen=720)
 
             # Give the source wav file (that was given to us) and the target
-            # wav file (that we collected) to Praat for processing.
-            success = ENTRAINER.entrain_from_file_praat(
+            # wav file (that we collected) to Praat for processing. Get back
+            # whether it worked, and if so, the entrainment data, such as the
+            # speaking rate and pitch of the source and target.
+            success, entrain_data = ENTRAINER.entrain_from_file_praat(
                 target,
                 data.audio,
                 out_file,
@@ -530,7 +586,7 @@ def on_entrain_audio_msg(data):
         # TODO Use the speaking binary and interaction state to decide when
         # to collect audio from the local mic.
         out_file = "out" + tim + ".wav"
-        success = ENTRAINER.entrain_from_mic(
+        success, entrain_data = ENTRAINER.entrain_from_mic(
             data.audio,
             out_file,
             FULL_AUDIO_OUT_DIR,
@@ -543,6 +599,7 @@ def on_entrain_audio_msg(data):
             visemes,
             energies,
             times)
+        send_entrainment_data_message(entrain_data)
     else:
         send_tega_action_message(
             SERVER + SOURCE_AUDIO_DIR + (os.path.basename(data.audio)),
@@ -555,12 +612,58 @@ def send_tega_action_message(audio_file, visemes, energies, times):
     """ Publish TegaAction message to playback audio. """
     print '\nsending speech message: %s' % audio_file
     msg = TegaAction()
+    # Add header.
+    msg.header = Header()
+    msg.header.stamp = rospy.Time.now()
     msg.wav_filename = audio_file
     msg.visemes = visemes
     msg.energy_values = energies
     msg.energy_times = times
     PUB_TEGA_ACTION.publish(msg)
     # rospy.loginfo(msg)
+
+
+def send_entrainment_data_message(data):
+    """ Publish an EntrainmentData message containing the latest entrainment
+    information from the latest two files entrained (source and target), such
+    as speaking rate and pitch.
+    """
+    # Build message.
+    msg = EntrainmentData()
+    # Add header.
+    msg.header = Header()
+    msg.header.stamp = rospy.Time.now()
+    # Fill in data.
+    if "source_file" in data:
+        msg.source_audio = data["source_file"]
+    if "target_file" in data:
+        msg.target_audio = data["target_file"]
+    if "output_file" in data:
+        msg.output_audio = data["output_file"]
+    if "target_mean_intensity" in data:
+        msg.target_mean_intensity = data["target_mean_intensity"]
+    if "source_mean_intensity" in data:
+        msg.source_mean_intensity = data["source_mean_intensity"]
+    if "target_speech_rate" in data:
+        msg.target_speaking_rate = data["target_speech_rate"]
+    if "source_speech_rate" in data:
+        msg.source_speaking_rate = data["source_speech_rate"]
+    if "source_dur" in data:
+        msg.source_original_duration = data["source_dur"]
+    if "dur_factor" in data:
+        msg.duration_morph_factor = data["dur_factor"]
+    if "adjusted_dur_factor" in data:
+        msg.adjusted_duration_morph_factor = data["adjusted_dur_factor"]
+    if "morphed_duration" in data:
+        msg.source_morphed_duration = data["morphed_duration"]
+    if "source_mean_pitch" in data:
+        msg.source_mean_pitch = data["source_mean_pitch"]
+    if "target_mean_pitch" in data:
+        msg.target_mean_pitch = data["target_mean_pitch"]
+    if "adjust_pitch_by" in data:
+        msg.adjust_pitch_by = data["adjust_pitch_by"]
+    # Send.
+    PUB_DATA.publish(msg)
 
 
 if __name__ == '__main__':
@@ -640,6 +743,11 @@ if __name__ == '__main__':
     # Set up rostopics we publish: log messages, TegaAction.
     PUB_AE = rospy.Publisher('rr/audio_entrainer', String, queue_size=10)
     PUB_TEGA_ACTION = rospy.Publisher('tega', TegaAction, queue_size=10)
+
+    # This node will also publish entrainment results with data about the audio
+    # files' speaking rate, pitch, intensity, etc in case anyone cares.
+    PUB_DATA = rospy.Publisher('rr/entrainment_data', EntrainmentData,
+                               queue_size=10)
 
     # This node will listen for incoming audio, whether or not someone is
     # speaking, and messages from the teleop interface or state machine node
