@@ -1,40 +1,43 @@
 #! /usr/bin/env python
-#
-# Jacqueline Kory Westlund
-# May 2017
-#
-# Entrain an outgoing/source audio file to an incoming target. Detect various
-# features of the incoming signal (e.g., pitch, speaking rate, intensity) and
-# morph the outgoing sound to match.
-# Theoretically, there is the option to use python or Praat to detect and morph,
-# but currently, only the Praat script is being developed.
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see http://www.gnu.org/licenses/
+"""
+Jacqueline Kory Westlund
+May 2017
 
+Entrain an outgoing/source audio file to an incoming target. Detect various
+features of the incoming signal (e.g., pitch, speaking rate, intensity) and
+morph the outgoing sound to match.
+Theoretically, there is the option to use python or Praat to detect and morph,
+but currently, only the Praat script is being developed.
+
+#############################################################################
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+details.
+
+You should have received a copy of the GNU General Public License along with
+this program.  If not, see http://www.gnu.org/licenses/
+"""
 
 import argparse
-import pyaudio # (MIT license)
+import pyaudio  # (MIT license)
 import numpy
-import aubio # pitch detection (GNU/GPL license)
-from collections import deque # queue for incoming audio
+import aubio  # pitch detection (GNU/GPL license)
+from collections import deque  # queue for incoming audio
 import os
 import subprocess
-import wave # for saving wav files
+import wave  # for saving wav files
 import struct
 # Needed only if not using Praat for audio file processing:
 #import scipy.ndimage.interpolation
 #import librosa (ISC license)
+
 
 class EntrainAudio():
     """ Given an audio stream and an audio file, detect the pitch and tempo of
@@ -125,7 +128,7 @@ class EntrainAudio():
 
 
     def entrain_from_mic(self, source_file, out_file, out_dir, use_praat,
-            target_age):
+                         target_age):
         """ Open the microphone to get an incoming audio stream. If the
         use_praat flag is set, save the first section of audio that is probably
         speech to a wav file and use that as the target when processing with
@@ -500,12 +503,12 @@ class EntrainAudio():
             source_file: .wav to morph.
         """
         # Print out our target array of pitches.
-        print(target)
+        print target
         # Use librosa to read in the source wav file as a numpy array.
         source = librosa.core.load(source_file)
         # Get source pitches.
         source_pitches = self.detect_pitches(source[0])
-        print(source_pitches)
+        print source_pitches
 
         # Morph mean pitch.
         self.morph_mean_pitch(target, source, source_pitches)
@@ -548,27 +551,26 @@ if __name__ == '__main__':
             "audio. Default is the current working directory.")
 
     # Get arguments.
-    args = parser.parse_args()
-    print(args)
+    ARGS = parser.parse_args()
+    print ARGS
 
     # If no output directory was provided, default to the current working
     # directory.
-    if not args.out_dir:
-        args.out_dir = os.getcwd()
+    if not ARGS.out_dir:
+        ARGS.out_dir = os.getcwd() + "/"
 
     # Set up audio entrainer.
     entrainer = EntrainAudio()
 
     # If an incoming audio file was provided, open it for processing.
-    if args.incoming_audio:
-            entrainer.entrain_from_file(args.incoming_audio,
-                    args.audio_to_morph, args.out_file, args.out_dir,
-                    args.use_praat, args.target_age)
+    if ARGS.incoming_audio:
+            entrainer.entrain_from_file(
+                    ARGS.incoming_audio, ARGS.audio_to_morph, ARGS.out_file,
+                    ARGS.out_dir, ARGS.use_praat, ARGS.target_age)
 
-    # Otherwise, open the microphone stream for processing. Only stop processing
-    # from the mic when we get a keyboard interrupt and exit.
+    # Otherwise, open the microphone stream for processing. Only stop
+    # processing from the mic when we get a keyboard interrupt and exit.
     else:
-        entrainer.entrain_from_mic(args.audio_to_morph, args.out_file,
-                args.out_dir, args.use_praat, args.target_age)
-
-
+        entrainer.entrain_from_mic(ARGS.audio_to_morph, ARGS.out_file,
+                                   ARGS.out_dir, ARGS.use_praat,
+                                   ARGS.target_age)
