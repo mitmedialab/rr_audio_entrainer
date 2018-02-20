@@ -28,6 +28,7 @@ import pyaudio  # (MIT license)
 import numpy
 import aubio  # pitch detection (GNU/GPL license)
 from collections import deque  # queue for incoming audio
+import logging  # Log messages.
 import os
 import os.path
 import subprocess
@@ -191,7 +192,7 @@ class AudioEntrainer(object):
                     dtype=numpy.int16).astype(numpy.float32)
                 pitch = self.pitch_detector(signal)[0]
                 confidence = self.pitch_detector.get_confidence()
-                print "{} / {}".format(pitch, confidence)
+                LOGGER.info("{} / {}".format(pitch, confidence))
 
                 # For now, we just check the pitch to see if it is probably a
                 # part of human speech or not. If we get enough values in a row
@@ -206,7 +207,7 @@ class AudioEntrainer(object):
                     running_total_speech += 1
                     if running_total_speech > 4:
                         # Potential speech. Start tracking.
-                        print "\tspeech?"
+                        LOGGER.debug("\tspeech?")
                         # Reset silence counter.
                         running_total_silence = 0
                         # Save running stream of pitches.
@@ -218,7 +219,7 @@ class AudioEntrainer(object):
                     # sound, there's probably a pause or no speech.
                     # TODO Pick good values for these:
                     if running_total_silence > 6 and running_total_speech < 20:
-                        print "\tsilence"
+                        LOGGER.debug("\tsilence")
                         running_total_speech = 0
                     else:
                         # If it's just a short pause, we can keep it.
@@ -251,7 +252,7 @@ class AudioEntrainer(object):
                     break
             # Stop processing.
             except KeyboardInterrupt:
-                print "*** Keyboard interrupt, exiting"
+                LOGGER.info("*** Keyboard interrupt, exiting")
                 break
         # Close stream and clean up.
         stream.stop_stream()
@@ -304,8 +305,7 @@ class AudioEntrainer(object):
             else:
                 return False, data
         except Exception as ex:
-            print ex
-            print "Praat didn't work!"
+            LOGGER.warning("Praat didn't work! {}".format(ex))
             return False, None
 
     def parse_praat_output(self, output):
@@ -313,7 +313,7 @@ class AudioEntrainer(object):
         order to get relevant data about the source file and the target it was
         entrained to.
         """
-        print "Parsing Praat output..."
+        LOGGER.info("Parsing Praat output...")
         data = {}
         output_lines = output.split("\n")
         for line in output_lines:
@@ -350,12 +350,12 @@ class AudioEntrainer(object):
                     if "**Adjust pitch by: " in line:
                         data["adjust_pitch_by"] = value
                 except ValueError as valerr:
-                    print "Could not get value! {}".format(valerr)
+                    LOGGER.warning("Could not get value! {}".format(valerr))
         return data
 
     def save_to_wav(self, data, filename):
         """ Save the given audio data to a wav file. """
-        print "saving to wav: " + filename
+        LOGGER.info("saving to wav: {}".format(filename))
         wav_file = wave.open(filename, 'wb')
         wav_file.setnchannels(self.n_channels)
         wav_file.setsampwidth(self.sample_size)
@@ -377,7 +377,7 @@ class AudioEntrainer(object):
         # pylint: disable=too-many-locals
         # Open the original audio file and the morphed file, get the durations,
         # and figure out how much to change the viseme file (if at all).
-        print "Updating viseme file to match morphed audio..."
+        LOGGER.info("Updating viseme file to match morphed audio...")
         diff = 0
         try:
             orig = wave.open(original_audio, 'r')
@@ -386,13 +386,13 @@ class AudioEntrainer(object):
             morphed_length = morphed.getnframes() / \
                 (float)(morphed.getframerate())
             diff = (morphed_length - orig_length) * 1000.0
-            print "Source: {}, morphed: {}, diff: {}".format(
+            LOGGER.info("Source: {}, morphed: {}, diff: {}".format(
                 orig_length,
                 morphed_length,
-                diff)
+                diff))
         except Exception as ex:
-            print "Couldn't open file to check length. Maybe it doesn't exist?"
-            print ex
+            LOGGER.warning("Couldn't open file to check length. Maybe it "
+                           "doesn't exist? {}".format(ex))
 
         # Read in the viseme file for processing.
         lines = []
@@ -402,8 +402,8 @@ class AudioEntrainer(object):
                 lines.append(line.strip().split(" "))
             vfile.close()
         except Exception as ex:
-            print "Could not read viseme file: " + viseme_file
-            print ex
+            LOGGER.warning("Could not read viseme file: {} {}".format(
+                viseme_file, ex))
             return []
 
         # The viseme files have a header line, so subtract it from the total.
@@ -411,17 +411,17 @@ class AudioEntrainer(object):
         change_by = 0
         if len(lines) > 1:
             change_by = diff / (len(lines) - 1)
-            print "Change viseme lines by {}".format(change_by)
+            LOGGER.info("Change viseme lines by {}".format(change_by))
         _vs = []
         for line in lines:
-            print line
+            LOGGER.debug(line)
             if len(line) > 1:
                 try:
                     _vi = Viseme(line[1], int(int(line[0]) + change_by))
                     _vs.append(_vi)
                 except Exception as ex:
-                    print "Could not change viseme line: %s" % line
-                    print ex
+                    LOGGER.warning("Couldn't change viseme line: {} {}".format(
+                        line, ex))
         # Return array of phoneme / viseme-time pairs.
         return _vs
 
@@ -437,7 +437,7 @@ class AudioEntrainer(object):
             if rate == 0 or not data.any():
                 return [], []
         except Exception as ex:
-            print ex
+            LOGGER.warning(ex)
             return [], []
         # Get data type max value.
         max_value = numpy.iinfo(data.dtype).max
@@ -610,7 +610,7 @@ def on_entrain_audio_msg(data):
 
 def send_tega_action_message(audio_file, visemes, energies, times):
     """ Publish TegaAction message to playback audio. """
-    print '\nsending speech message: %s' % audio_file
+    LOGGER.info("\nsending speech message: {}".format(audio_file))
     msg = TegaAction()
     # Add header.
     msg.header = Header()
@@ -620,7 +620,6 @@ def send_tega_action_message(audio_file, visemes, energies, times):
     msg.energy_values = energies
     msg.energy_times = times
     PUB_TEGA_ACTION.publish(msg)
-    # rospy.loginfo(msg)
 
 
 def send_entrainment_data_message(data):
@@ -667,6 +666,10 @@ def send_entrainment_data_message(data):
 
 
 if __name__ == '__main__':
+    # Set up logger.
+    LOGGER = logging.getLogger(__name__)
+    LOGGER.info("Initializing audio entrainer...")
+
     PARSER = argparse.ArgumentParser(
         description="""Given an audio stream over ROS, detect various audio
             features. Morph an audio file (specified via a ROS msg) to match
@@ -696,7 +699,7 @@ if __name__ == '__main__':
 
     # Get arguments.
     ARGS = PARSER.parse_args()
-    print ARGS
+    LOGGER.debug("Got args: {}".format(ARGS))
 
     # Set up defaults.
     SOURCE_AUDIO_DIR = "source/"
@@ -778,4 +781,4 @@ if __name__ == '__main__':
     try:
         rospy.spin()
     except KeyboardInterrupt:
-        print "Shutting down audio entrainment module"
+        LOGGER.info("Shutting down audio entrainment module")
