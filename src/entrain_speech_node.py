@@ -47,8 +47,8 @@ from rr_msgs.msg import EntrainmentData
 from std_msgs.msg import Header  # Standard ROS msg header.
 from std_msgs.msg import String
 # TODO For streaming audio to the robot.
-#import SimpleHTTPServer
-#import SocketServer
+# import SimpleHTTPServer
+# import SocketServer
 
 
 class AudioEntrainer(object):
@@ -541,9 +541,12 @@ def on_entrain_audio_msg(data):
         out_file = os.path.basename(data.audio.replace(".wav", "")) + tim + \
             ".wav"
 
-        # If we have audio data to use as a target, and we are supposed to
-        # entrain to it, then we should save it and entrain to it.
-        if len(AUDIO_DATA) > 0 and data.entrain:
+        # If we have audio data to use as a target, then we should save it and
+        # entrain to it. Even if we are told not to entrain, we do this anyway
+        # so that the latency for entrainment vs. not is the same -- i.e., we
+        # do all the same computation, but we will stream the not-entrained
+        # version of the source file later.
+        if len(AUDIO_DATA) > 0:
             # Save audio collected so far to wav file.
             ENTRAINER.save_to_wav(AUDIO_DATA, target)
             # Reset audio data.
@@ -560,11 +563,8 @@ def on_entrain_audio_msg(data):
                 out_file,
                 FULL_AUDIO_OUT_DIR,
                 data.age)
-        elif not data.entrain:
-            print "We were told not to entrain. Skipping entrainment."
         else:
-            print "We were supposed to entrain, but we had no audio data " +\
-                "to entrain to... skipping entrainment."
+            LOGGER.info("No audio data available for doing entrainment!")
 
         # Adjust the viseme file times to match the morphed audio.
         visemes = ENTRAINER.process_visemes(
@@ -581,8 +581,8 @@ def on_entrain_audio_msg(data):
         else:
             energies, times = ENTRAINER.process_energy("", data.audio)
 
+    # If we are not using ROS, collect from the local mic and entrain to that.
     else:
-        # For now, collect some audio from the local mic and entrain to that.
         # TODO Use the speaking binary and interaction state to decide when
         # to collect audio from the local mic.
         out_file = "out" + tim + ".wav"
@@ -592,20 +592,28 @@ def on_entrain_audio_msg(data):
             FULL_AUDIO_OUT_DIR,
             data.age)
 
-    # After audio is entrained, stream to the robot.
-    if success:
+    # After audio is entrained, send to the robot. Stream the morphed output
+    # if it worked and if we are supposed to entrain; otherwise, stream the
+    # original source file.
+    if success and data.entrain:
+        LOGGER.info("Sending entrained audio file to robot...")
         send_tega_action_message(
             SERVER + OUTPUT_AUDIO_DIR + out_file,
             visemes,
             energies,
             times)
-        send_entrainment_data_message(entrain_data)
     else:
+        LOGGER.info("We were either told not to entrain, or could not entrain,"
+                    " so we are sending the not-entrained source file.")
         send_tega_action_message(
             SERVER + SOURCE_AUDIO_DIR + (os.path.basename(data.audio)),
             visemes,
             energies,
             times)
+    # Also send the entrainment data we collected. Since we computed this data
+    # regardless, we have it whether or not the morphed/entrained audio was
+    # sent.
+    send_entrainment_data_message(entrain_data)
 
 
 def send_tega_action_message(audio_file, visemes, energies, times):
@@ -711,12 +719,12 @@ if __name__ == '__main__':
     # TODO this needs to be on its own thread, as it is blocking. For now, run
     # in a separate python shell.
     # Change directory to serve from the directory where we save audio output.
-    #os.chdir(FULL_AUDIO_OUT_DIR)
+    # os.chdir(FULL_AUDIO_OUT_DIR)
     PORT = 8000
-    #Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
-    #httpd = SocketServer.TCPServer(("", port), Handler)
-    #print "Serving at port", port
-    #httpd.serve_forver()
+    # Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
+    # httpd = SocketServer.TCPServer(("", port), Handler)
+    # LOGGER.info("Serving at port {}".format(port))
+    # httpd.serve_forver()
     # Stream audio to the robot from this address.
     SERVER = "http://" + str(ARGS.ip_addr[0]) + ":" + str(PORT) + "/"
 
