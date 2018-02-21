@@ -532,6 +532,7 @@ def on_entrain_audio_msg(data):
     IS_PARTICIPANT_TURN = False
     visemes = []
     success = False
+    entrain_data = {}
     # Append the current date and time to our output files so we don't
     # overwrite previous output files.
     tim = time.strftime("%Y-%m-%d.%H:%M:%S")
