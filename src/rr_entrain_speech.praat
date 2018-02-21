@@ -149,13 +149,12 @@ printline **Duration morph factor: 'dur_factor:2'
 # Slows it down...
 if dur_factor > 1.3
     dur_factor = 1.3
-    printline **Adjusted duration morph factor: 'dur_factor:2'
 endif
 # Speeds it up...
 if dur_factor < 0.7
     dur_factor = 0.7
-    printline **Adjusted duration morph factor: 'dur_factor:2'
 endif
+printline **Adjusted duration morph factor: 'dur_factor:2'
 
 # Select the source sound.
 select 'source_sound_id'
