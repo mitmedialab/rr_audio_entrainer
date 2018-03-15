@@ -628,6 +628,7 @@ def send_tega_action_message(audio_file, visemes, energies, times):
     msg.visemes = visemes
     msg.energy_values = energies
     msg.energy_times = times
+    msg.enqueue = True
     PUB_TEGA_ACTION.publish(msg)
 
 
